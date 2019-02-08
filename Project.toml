@@ -1,0 +1,7 @@
+name = "Thyrosim"
+uuid = "7ef34fca-2b35-11e9-1aeb-a527bedb189e"
+authors = ["Benjamin Chu <benchu99@hotmail.com>"]
+version = "0.1.0"
+
+[deps]
+DifferentialEquations = "0c46a032-eb83-5123-abaf-570d42b7fbaa"
