@@ -2,7 +2,7 @@ __precompile__()
 
 module Thyrosim
 
-    export p, ic, modify_params, thyrosim, output_equations
+    export initialize, original_thyrosim
 
     include("thyrosim_odes.jl")
 
