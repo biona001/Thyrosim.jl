@@ -99,3 +99,51 @@ function schneider_data()
 end
 # train, test, toy = schneider_data()
 
+function output_plot(sol)
+    ## Need to change to pick better y limits!
+    p1 = plot(sol.t / 24.0, 777.0 * sol[1, :] / p[47], ylim=(0, 115), label="",
+       ylabel="T4", title="Thyrosim simulation")
+    p1 = hline!([45, 120], label= "")
+    
+    p2 = plot(sol.t / 24.0, 651.0 * sol[4, :] / p[47], ylim=(0, 4), label="", 
+       ylabel="T3")
+    p2 = hline!([0.6, 1.8], label= "")
+    
+    p3 = plot(sol.t / 24.0, 5.6 * sol[7, :] / p[48], ylim=(0, 10), label="",
+       ylabel="TSH", xlabel="time [days]")
+    p3 = hline!([0.45, 4.5], label= "")
+    
+    plot(p1, p2, p3, layout=(3, 1))
+end
+
+function plot_blakesley(sol, which="400")
+    markersize = 2
+    t_data, data400, data450, data600 = blakesley_data()
+    if which == "400"
+        data = data400
+    elseif which == "450"
+        data = data450
+    else
+        data = data600
+    end
+    
+    t_data = t_data / 24.0
+            
+    ## Need to change to pick better y limits!
+    p1 = plot(sol.t / 24.0, 777.0 * sol[1, :] / p[47], ylim=(0, 140), label="",
+       ylabel="T4", title="Thyrosim simulation (Blakesley data)")
+    p1 = hline!([45, 105], label= "")
+    p1 = scatter!(t_data, data[:, 1], label="", markersize=markersize)
+    
+    p2 = plot(sol.t / 24.0, 651.0 * sol[4, :] / p[47], ylim=(0, 4), label="", 
+       ylabel="T3")
+    p2 = hline!([0.6, 1.8], label= "")
+    p2 = scatter!(t_data, data[:, 2], label="", markersize=markersize)
+    
+    p3 = plot(sol.t / 24.0, 5.6 * sol[7, :] / p[48], ylim=(0, 10), label="",
+       ylabel="TSH", xlabel="time [days]")
+    p3 = hline!([0.45, 4.5], label= "")
+    p3 = scatter!(t_data, data[:, 3], label="", markersize=markersize)
+    
+    plot(p1, p2, p3, layout=(3, 1))
+end
