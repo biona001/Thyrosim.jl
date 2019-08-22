@@ -1,5 +1,4 @@
 # Initial conditions
-
 function initialize(
     dial::Vector{Float64} = [1.0; 0.88; 1.0; 0.88],
     scale_Vp::Bool = true,
@@ -102,8 +101,6 @@ end
 + `height` measured in meters
 + `weight` measured in KG 
 + `sex`: 1 = male, 0 = female
-
-
 """
 function plasma_volume(h, w, sex::Bool)
     Hem = 0.40 + 0.05 * sex #.45 for male and .4 for females (by default)
