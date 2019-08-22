@@ -1,7 +1,9 @@
 name = "Thyrosim"
 uuid = "7ef34fca-2b35-11e9-1aeb-a527bedb189e"
-authors = ["Benjamin Chu <benchu99@hotmail.com>"]
+authors = ["Mauricio Cruz Loya<mcruzloya@ucla.edu>", "Benjamin Chu <benchu99@hotmail.com>"]
 version = "0.1.0"
 
 [deps]
 DifferentialEquations = "0c46a032-eb83-5123-abaf-570d42b7fbaa"
+CSV = "336ed68f-0bac-5ca0-87d4-7b16caf5d00b"
+ExcelReaders = "c04bee98-12a5-510c-87df-2a230cb6e075"
