@@ -4,7 +4,7 @@ function initialize(
     scale_Vp::Bool = true,
     height=1.77,
     weight=70,
-    sex=true
+    sex=true #true = male, false = female
     )
 
     # Initial conditions
@@ -98,9 +98,13 @@ end
     female_weight = 59.0
 
 # Inputs
-+ `height` measured in meters
-+ `weight` measured in KG 
++ `height`: measured in meters
++ `weight`: measured in KG 
 + `sex`: 1 = male, 0 = female
+
+# Outputs 
++ `Vp_new`: Scaled plasma volume (liters)
++ `Vtsh_new`: Scaled TSH distribution volume (liters)
 """
 function plasma_volume(h, w, sex::Bool)
     Hem = 0.40 + 0.05 * sex #.45 for male and .4 for females (by default)
