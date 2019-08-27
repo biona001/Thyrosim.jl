@@ -2,7 +2,8 @@ __precompile__()
 
 module Thyrosim
 
-    export initialize, original_thyrosim
+    export initialize, initialize_original_thyrosim
+    export thyrosim, original_thyrosim
     export blakesley_data, jonklaas_data, schneider_data
     export reset_p!
 
