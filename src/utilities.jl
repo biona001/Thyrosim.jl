@@ -101,6 +101,7 @@ end
 
 function output_plot(sol)
     ## Need to change to pick better y limits!
+    p = sol.prob.p 
     p1 = plot(sol.t / 24.0, 777.0 * sol[1, :] / p[47], ylim=(0, 115), label="",
        ylabel="T4", title="Thyrosim simulation")
     p1 = hline!([45, 120], label= "")
@@ -128,8 +129,9 @@ function plot_blakesley(sol, which="400")
     end
     
     t_data = t_data / 24.0
-            
+
     ## Need to change to pick better y limits!
+    p = sol.prob.p 
     p1 = plot(sol.t / 24.0, 777.0 * sol[1, :] / p[47], ylim=(0, 140), label="",
        ylabel="T4", title="Thyrosim simulation (Blakesley data)")
     p1 = hline!([45, 105], label= "")
