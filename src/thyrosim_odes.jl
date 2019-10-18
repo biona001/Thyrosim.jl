@@ -102,7 +102,7 @@ function initialize(
     sex=true #true = male, false = female
     )
 
-    # TODO: what to do with initial conditions?
+    # TODO: need to calculate initial steady state
     ic    = zeros(Float64, 19)
     ic[1] = 0.322114215761171
     ic[2] = 0.201296960359917
