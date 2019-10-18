@@ -15,7 +15,7 @@ train, test, toy = schneider_data()
 using Revise
 using DifferentialEquations
 using Thyrosim
-using Plots
+# using Plots
 using DiffEqCallbacks
 using Optim
 
@@ -26,7 +26,7 @@ tspan = (my_time[1], my_time[end])
 function condition(u, t, integrator)
     return t - 24.0
 end
-function affect!(integrator)
+function affect400!(integrator)
 #     T4_dose = 1.6 * 70.0 / 777.0;
     T4_dose = 400.0 / 777.0
     T3_dose = 0.0
@@ -36,14 +36,47 @@ function affect!(integrator)
     integrator.u[11] += T4_dose
     integrator.u[13] += T3_dose
 end
+function affect450!(integrator)
+#     T4_dose = 1.6 * 70.0 / 777.0;
+    T4_dose = 450.0 / 777.0
+    T3_dose = 0.0
+    
+    ## CHECK: Should probably be adding to pill compartments 10, 12 but do this same way as Simon's code so
+    ## we can compare.
+    integrator.u[11] += T4_dose
+    integrator.u[13] += T3_dose
+end
+function affect600!(integrator)
+#     T4_dose = 1.6 * 70.0 / 777.0;
+    T4_dose = 600.0 / 777.0
+    T3_dose = 0.0
+    
+    ## CHECK: Should probably be adding to pill compartments 10, 12 but do this same way as Simon's code so
+    ## we can compare.
+    integrator.u[11] += T4_dose
+    integrator.u[13] += T3_dose
+end
 
 # gives dose at 24 hour
-cbk = ContinuousCallback(condition, affect!);
+cbk400 = ContinuousCallback(condition, affect400!);
+cbk450 = ContinuousCallback(condition, affect450!);
+cbk600 = ContinuousCallback(condition, affect600!);
 
 # define problem and error function
-prob = ODEProblem(original_thyrosim,ic,tspan,p,callback=cbk)
-cost_function = build_loss_objective(prob,Tsit5(),L2Loss(my_time, my400_data[:, 3]),
-                                     maxiters=10000,verbose=false, save_idxs=[7])
+ode = original_thyrosim
+prob_400 = ODEProblem(ode,ic,tspan,p,callback=cbk400)
+prob_450 = ODEProblem(ode,ic,tspan,p,callback=cbk400)
+prob_600 = ODEProblem(ode,ic,tspan,p,callback=cbk400)
+cost_function_400 = build_loss_objective(prob,Tsit5(),L2Loss(my_time, my400_data[:, 3]),maxiters=10000,verbose=false, save_idxs=[7])
+cost_function_450 = build_loss_objective(prob,Tsit5(),L2Loss(my_time, my450_data[:, 3]),maxiters=10000,verbose=false, save_idxs=[7])
+cost_function_600 = build_loss_objective(prob,Tsit5(),L2Loss(my_time, my600_data[:, 3]),maxiters=10000,verbose=false, save_idxs=[7])
+
+#fits blakesley data
+result = optimize(cost_function_400, p, BFGS())
+result.minimizer
+
+
+###############################
 
 # fitting_index = [30, 31, 49, 50, 51, 52]
 fitting_index = [30, 31]
@@ -101,7 +134,23 @@ function loss(p)
 
 	return cost_function(p)
 end
-result = optimize(jonklaas_loss, p, BFGS())
+
+
+#need cost function which accepts only 1 input vector?
+function jonklaas_loss(prob::ODEProblem, data::AbstractVector, times::AbstractVector)
+	err = 0.0
+	sol = solve(prob, save_idxs=[7]);
+	storage = zeros(Float64, 1)
+	for i in 1:length(data)
+		storage .= sol(times[i])
+		err += (data[i] - storage[1])^2
+	end
+	return err	   
+end
+jonklaas_loss(prob, my400_data[:, 3], my_time)
+
+L2Loss(my_time, my400_data[:, 3])
+
 
 
 
@@ -112,19 +161,6 @@ result = optimize(jonklaas_loss, p, BFGS())
 
 
 # result = optimize(cost_function, p, BFGS())
-
-# function jonklaas_loss(prob, data, times)
-# 	err = 0.0
-# 	sol = solve(prob, save_idxs=[7]);
-# 	storage = zeros(Float64, 1)
-# 	for i in 1:length(data)
-# 		storage .= sol(times[i])
-# 		err += (data[i] - storage[1])^2
-# 	end
-# 	return err	   
-# end
-# jonklaas_loss(prob, my400_data[:, 3], my_time)
-
 
 # result = optimize(cost_function, p, BFGS())
 

@@ -249,7 +249,9 @@ function plasma_volume(h, w, sex::Bool)
 end
 
 """
-Original thyrosim ODEs, taken from: https://bitbucket.org/DistefanoLab/thyrosim/src/master/resource/matlab/thyrosim_core.m
+Original thyrosim ODEs.
+
+Source: https://bitbucket.org/DistefanoLab/thyrosim/src/master/resource/matlab/thyrosim_core.m
 """
 function original_thyrosim(dq, q, p, t)
     kdelay = 5/8
@@ -283,8 +285,8 @@ function original_thyrosim(dq, q, p, t)
     dq[13] =  p[45] * q[12] - (p[46] + p[28]) * q[13]                         #T3GUTdot
 
     # Delay ODEs
-    dq[14] = -kdelay * q[14] + q[7]                                           #delay1 CHECK, might be wrong 
-    # dq[14] = kdelay * (q[7] - q[14]) 
+    # dq[14] = -kdelay * q[14] + q[7]                                           #delay1 CHECK, might be wrong 
+    dq[14] = kdelay * (q[7] - q[14]) 
     dq[15] = kdelay * (q[14] - q[15])                                         #delay2
     dq[16] = kdelay * (q[15] - q[16])                                         #delay3
     dq[17] = kdelay * (q[16] - q[17])                                         #delay4

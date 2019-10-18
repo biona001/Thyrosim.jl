@@ -4,6 +4,7 @@ authors = ["Mauricio Cruz Loya<mcruzloya@ucla.edu>", "Benjamin Chu <benchu99@hot
 version = "0.1.0"
 
 [deps]
-DifferentialEquations = "0c46a032-eb83-5123-abaf-570d42b7fbaa"
 CSV = "336ed68f-0bac-5ca0-87d4-7b16caf5d00b"
+DifferentialEquations = "0c46a032-eb83-5123-abaf-570d42b7fbaa"
 ExcelReaders = "c04bee98-12a5-510c-87df-2a230cb6e075"
+Plots = "91a5bcdd-55d7-5caf-9e0b-520d859cae80"

@@ -82,6 +82,18 @@ function jonklaas_data()
 end
 # patient_param, patient_t4, patient_t3, patient_tsh = jonklaas_data()
 
+"""
+Schneider patients are completely thyroidectomized, but have attained euthyroidism 
+using T4 oral treatments. Normal TSH level = 0.45-4.5 mIU/ml. Here 12.5 μg is the 
+mallest dosing increment.
+
+Usable data:
+- Starting T4 dose
+- Euthyroid T4 dose
+- Days to euthyroid
+- Number of dose changes 
+- Initial TSH level
+"""
 function schneider_data()
 
     # data path
