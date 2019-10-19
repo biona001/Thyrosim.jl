@@ -43,7 +43,8 @@ function jonklaas_data()
     datapath = normpath(Thyrosim.datadir())
     f = openxl(datapath * "/jonklaas/Daily T3 6-6-17.xlsx")
 
-    patients      = [1 13 10 18 19 31 27 2 8 20 11 6 22 24 5]
+    patients      = [1  13 10 18 19 31 27  2  8 20 11  6 22 24  5]
+    patient_dose  = [30 30 45 45 30 30 45 30 30 30 45 45 45 45 30]
     patient_t4    = zeros(Float64, 15, 10) # each row is a patient
     patient_t3    = zeros(Float64, 15, 10) # each row is a patient
     patient_tsh   = zeros(Float64, 15, 10) # each row is a patient
@@ -78,7 +79,7 @@ function jonklaas_data()
         counter += 1
     end
 
-    return patient_param, patient_t4, patient_t3, patient_tsh
+    return patient_param, patient_dose, patient_t4, patient_t3, patient_tsh
 end
 # patient_param, patient_t4, patient_t3, patient_tsh = jonklaas_data()
 
