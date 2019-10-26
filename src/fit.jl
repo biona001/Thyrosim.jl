@@ -109,8 +109,8 @@ function initialize!(
     #parameters for hill functions in f_circ and SRtsh
     p[49] = 4.57           #K_circ -> fitted to Blakesley data (this will be recalculated in the ODE equations
     p[50] = 3.90           #K_SR_tsh -> fitted to Blakesley data (this will be recalculated in the ODE equations
-    p[51] = 6.91 #11.0     #hill exponent in f_circ -> fitted to Blakesley data
-    p[52] = 7.66 #5.0      #hill exponent in SR_tsh -> fitted to Blakesley data
+    p[51] = 11.0 #6.91     #hill exponent in f_circ -> fitted to Blakesley data
+    p[52] = 5.0  #7.66     #hill exponent in SR_tsh -> fitted to Blakesley data
     p[53] = 3.5            #Km for f4
     p[54] = 8.0            #hill exponent for f4
 
@@ -123,6 +123,30 @@ function initialize!(
     #TODO: setup p[60] = phase
 
     return ic, p
+end
+
+function get_initial_condition!(ic::Vector)
+
+    # TODO: need to calculate initial steady state
+    ic[1] = 0.322114215761171
+    ic[2] = 0.201296960359917
+    ic[3] = 0.638967411907560
+    ic[4] = 0.00663104034826483
+    ic[5] = 0.0112595761822961
+    ic[6] = 0.0652960640300348
+    ic[7] = 1.78829584764370
+    ic[8] = 7.05727560072869
+    ic[9] = 7.05714474742141
+    ic[10] = 0
+    ic[11] = 0
+    ic[12] = 0
+    ic[13] = 0
+    ic[14] = 3.34289716182018
+    ic[15] = 3.69277248068433
+    ic[16] = 3.87942133769244
+    ic[17] = 3.90061903207543
+    ic[18] = 3.77875734283571
+    ic[19] = 3.55364471589659
 end
 
 """
