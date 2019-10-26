@@ -178,8 +178,8 @@ function initialize(
     #parameters for hill functions in f_circ and SRtsh
     p[49] = 4.57           #K_circ -> fitted to Blakesley data (this will be recalculated in the ODE equations
     p[50] = 3.90           #K_SR_tsh -> fitted to Blakesley data (this will be recalculated in the ODE equations
-    p[51] = 6.91 #11.0     #hill exponent in f_circ -> fitted to Blakesley data
-    p[52] = 7.66 #5.0      #hill exponent in SR_tsh -> fitted to Blakesley data
+    p[51] = 11.0 #6.91     #hill exponent in f_circ
+    p[52] = 5.0  #7.66     #hill exponent in SR_tsh
     p[53] = 3.5            #Km for f4
     p[54] = 8.0            #hill exponent for f4
 
