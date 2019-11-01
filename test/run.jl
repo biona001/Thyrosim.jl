@@ -216,6 +216,120 @@ result = optimize(cost_function, [1.0, -3.0])
 
 
 
+# multithreading test
+
+using Distributed
+addprocs(4)
+
+@everywhere begin
+    using DifferentialEquations
+    using Thyrosim
+    using DiffEqCallbacks
+    using DiffEqParamEstim
+    using SharedArrays
+end
+
+# define function for adding dose
+@everywhere function add_dose!(integrator)
+    integrator.u[10] += integrator.p[55]
+    integrator.u[12] += integrator.p[56]
+end
+
+@everywhere function compute_euthyroid_dose_error(sol)
+    tot_loss = 0
+    if any((s.retcode != :Success for s in sol))
+        tot_loss = Inf
+    else
+        total_hours  = sol.t[end]
+        TSH_last_day = sol.u[sol.t .>= total_hours - 24]
+        if !all(0.5 .≤ TSH_last_day .≤ 4.5)
+            tot_loss += 1
+        end
+    end
+    return tot_loss
+end
+
+@everywhere function compute_initial_dose_error(sol)
+    tot_loss = 0
+    if any((s.retcode != :Success for s in sol))
+        tot_loss = Inf
+    else
+        total_hours  = sol.t[end]
+        TSH_last_day = sol.u[sol.t .>= total_hours - 24]
+        if all(0.5 .≤ TSH_last_day .≤ 4.5)
+            tot_loss += 1
+        end
+    end
+    return tot_loss
+end
+
+@everywhere function one_simulation(
+	height::Float64, 
+	weight::Float64, 
+	sex::Bool,
+	tspan::Float64,
+	initial_tsh::Float64,
+	euthyroid_dose::Float64,
+	initial_dose::Float64
+	)
+
+	#initialize simulation parameters
+    dial = [0.0; 0.88; 0.0; 0.88]
+    scale_Vp = true
+    ic, p = initialize(dial, scale_Vp, height, weight, sex)
+    ic[7] = initial_tsh
+    tot_loss = zero(Int)
+    cbk = PeriodicCallback(add_dose!, 24.0)# function to add dose
+
+    # calculate error for euthyroid dose
+    p[55] = euthyroid_dose / 777.0
+    prob  = ODEProblem(thyrosim,ic,(0.0, tspan),p,callback=cbk)
+    sol   = solve(prob, save_idxs=7)
+    
+    #increment error
+    tot_loss += compute_euthyroid_dose_error(sol)
+    
+    # when initial dose != euthyroid dose, calculate error
+    if initial_dose != euthyroid_dose
+        p[55] = initial_dose / 777.0
+        prob  = ODEProblem(thyrosim,ic,(0.0, tspan),p,callback=cbk)
+        sol   = solve(prob, save_idxs=7)
+        tot_loss += compute_initial_dose_error(sol)
+    end
+
+    return tot_loss
+end
+
+@everywhere function test_add(sol)
+	return 1000
+end
+
+function compute_schneider_error_distributed(train_data)
+	n = size(train_data, 1)
+
+	height = SharedArray{Float64}(convert(Vector{Float64}, train_data[!, Symbol("Ht.m")]))
+	weight = SharedArray{Float64}(convert(Vector{Float64}, train_data[!, Symbol("Wt.kg")]))
+	sex    = SharedArray{Bool}(convert(Vector{Bool}, train_data[!, Symbol("Sex")]))
+	tspan  = SharedArray{Float64}(convert(Vector{Float64}, 24train_data[!, Symbol("Days.to.euthyroid")]))
+	init_tsh   = SharedArray{Float64}(convert(Vector{Float64}, train_data[!, Symbol("TSH.preop")]))
+	euthy_dose = SharedArray{Float64}(convert(Vector{Float64}, train_data[!, Symbol("LT4.euthyroid.dose")]))
+	init_dose  = SharedArray{Float64}(convert(Vector{Float64}, train_data[!, Symbol("LT4.initial.dose")]))
+
+	@sync @distributed (+) for i in 1:n
+		one_simulation(height[i], weight[i], sex[i], tspan[i], init_tsh[i], euthy_dose[i], init_dose[i])
+	end
+end
+
+train, test, toy = schneider_data();
+
+@time err = compute_schneider_error_distributed(toy) 
+
+@time err = compute_schneider_error_distributed(train) 
+
+
+
+
+
 
 
 
