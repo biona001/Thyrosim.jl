@@ -216,7 +216,7 @@ result = optimize(cost_function, [1.0, -3.0])
 
 
 
-# multithreading test
+# parallelizing schneider fit
 
 using Distributed
 addprocs(4)
@@ -298,10 +298,6 @@ end
     end
 
     return tot_loss
-end
-
-@everywhere function test_add(sol)
-	return 1000
 end
 
 function compute_schneider_error_distributed(train_data)
