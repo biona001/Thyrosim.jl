@@ -1,3 +1,10 @@
+"""
+# Blakesley dataset description:
+
++ 36 healthy patients, 18 women 18 men, 3 were excluded
++ They were given 400/450/600 μg of oral T4 dose at 24th hour. Measurements were make for up to 5 days
++ All patients have "normal weight for height" 
+"""
 function blakesley_data()
     
     # data path
