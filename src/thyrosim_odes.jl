@@ -341,3 +341,39 @@ function output_equations(sol, p)
             651.0 * sol[4, :] / p[47], #T3
             5.6 * sol[7, :] / p[48]] #TSH
 end
+
+"""
+Set initial conditions from data. Options to set other compartments to steady state,
+optionally including the TSH lag compartments.
+"""
+function set_patient_ic!(ic, p, t4, t3, tsh;
+        steady_state::Bool=false, set_tsh_lag::Bool=false)
+    # Set IC for observed compartments. 
+    ic[1] = (p[47] * t4) / 777.0
+    ic[4] = (p[47] * t3) / 651.0
+    ic[7] = (p[48] * tsh) / 5.6
+    
+    if steady_state
+        q4F = (p[24]+ p[25] * ic[1] + p[26] * ic[1]^2 + p[27] *ic[1]^3) * ic[4] #FT3p
+        q1F = (p[7] + p[8] * ic[1] + p[9] * ic[1]^2 + p[10] * ic[1]^3) * ic[1]  #FT4p
+        
+        B = p[6] * q1F - p[14] * (p[3] + p[12]) - p[13]
+        A = -(p[3] + p[12])
+        C = p[6] * p[14] * q1F
+        ic[2] = (-B - sqrt(B^2 - 4.0 * A *C)) / (2.0 * A)
+        
+        B = p[5] * q1F - (p[4] + p[15] / p[16]) * p[18] - p[17]
+        A = -(p[4] + p[15] / p[16])
+        C = p[5] * p[18] * q1F
+        ic[3] = (-B - sqrt(B^2 - 4.0 * A *C)) / (2.0 * A)
+        
+        ic[5] = (p[23] * q4F + (p[13] / (p[14] + ic[2])) * ic[2]) / (p[20] + p[29])
+        ic[6] = (p[22] * q4F + p[15] * (ic[3] / (p[16] + ic[3]))
+            + p[17] * (ic[3] / (p[18] + ic[3]))) / p[21]
+    end
+    
+    if set_tsh_lag
+        # Probably not 100% correct since they're supposed to be lagged, but probably better than the default.
+        ic[14:19] .= ic[7]
+    end
+end

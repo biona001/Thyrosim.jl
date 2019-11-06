@@ -5,7 +5,7 @@ module Thyrosim
     export initialize, initialize_original_thyrosim
     export thyrosim, original_thyrosim
     export blakesley_data, jonklaas_data, schneider_data
-    export initialize!
+    export initialize!, set_patient_ic!
 
 	using ExcelReaders, CSV
 
