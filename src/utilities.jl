@@ -196,7 +196,7 @@ function plot_jonklaas(sol, T4data::Vector, T3data::Vector, TSHdata::Vector)
     ## Need to change to pick better y limits!
     p = sol.prob.p 
     p1 = plot(sol.t, 777.0 * sol[1, :] / p[47], ylim=(0, 140), label="",
-       ylabel="T4", title="Thyrosim simulation (Blakesley data)")
+       ylabel="T4", title="Thyrosim simulation (Jonklaas data)")
     p1 = hline!([45, 105], label= "")
     p1 = scatter!(t_data, T4data, label="", markersize=markersize)
     
