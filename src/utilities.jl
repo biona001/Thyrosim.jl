@@ -70,7 +70,7 @@ function jonklaas_data()
     patient_t4    = zeros(Float64, 15, 10) # each row is a patient
     patient_t3    = zeros(Float64, 15, 10) # each row is a patient
     patient_tsh   = zeros(Float64, 15, 10) # each row is a patient
-    patient_param = zeros(Float64, 15, 3)  # height (cm), weight (kg), sex
+    patient_param = zeros(Float64, 15, 3)  # height (m), weight (kg), sex (1 = male)
 
     counter = 1
     for i in patients
@@ -183,6 +183,32 @@ function plot_blakesley(sol, which="400")
        ylabel="TSH", xlabel="time [days]")
     p3 = hline!([0.45, 4.5], label= "")
     p3 = scatter!(t_data, data[:, 3], label="", markersize=markersize)
+    
+    plot(p1, p2, p3, layout=(3, 1))
+end
+
+function plot_jonklaas(sol, T4data::Vector, T3data::Vector, TSHdata::Vector)
+    markersize = 2
+
+    #time in which data are measured
+    t_data = [0.0; 0.5; 1.0; 2.0; 3.0; 4.0; 5.0; 6.0; 7.0; 8.0] 
+
+    ## Need to change to pick better y limits!
+    p = sol.prob.p 
+    p1 = plot(sol.t, 777.0 * sol[1, :] / p[47], ylim=(0, 140), label="",
+       ylabel="T4", title="Thyrosim simulation (Blakesley data)")
+    p1 = hline!([45, 105], label= "")
+    p1 = scatter!(t_data, T4data, label="", markersize=markersize)
+    
+    p2 = plot(sol.t, 651.0 * sol[4, :] / p[47], ylim=(0, 4), label="", 
+       ylabel="T3")
+    p2 = hline!([0.6, 1.8], label= "")
+    p2 = scatter!(t_data, T3data, label="", markersize=markersize)
+    
+    p3 = plot(sol.t, 5.6 * sol[7, :] / p[48], ylim=(0, 10), label="",
+       ylabel="TSH", xlabel="time [days]")
+    p3 = hline!([0.45, 4.5], label= "")
+    p3 = scatter!(t_data, TSHdata, label="", markersize=markersize)
     
     plot(p1, p2, p3, layout=(3, 1))
 end

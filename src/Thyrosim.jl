@@ -3,11 +3,13 @@ __precompile__()
 module Thyrosim
 
     export initialize, initialize_original_thyrosim
-    export thyrosim, original_thyrosim
+    export thyrosim, original_thyrosim, output_plot
     export blakesley_data, jonklaas_data, schneider_data
     export initialize!, set_patient_ic!
+    export plot_jonklaas, plot_blakesley
 
 	using ExcelReaders, CSV
+	import Plots:plot, hline!, scatter!
 
     include("thyrosim_odes.jl")
     include("utilities.jl")
