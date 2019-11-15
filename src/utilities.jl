@@ -44,6 +44,21 @@ function blakesley_data()
 end
 # my_time, my400_data, my450_data, my600_data = parse_blakesley()
 
+"""
+Jonklaas's patient description:
+
+This consists of T4, T3 and TSH measurements of 15 hypothyroid patients 
+(for which we know their individual height, weight and sex (mostly women)) 
+under T3 replacement therapy. In an initial period, the right dose to give 
+the patients was determined by adjusting the dose and measuring the patients 
+for 8 weeks. Then the actual timecourse measurements begin for 8 hours after 
+the last dose (either 30 or 45 ug T3, depending on the patient), every hour, 
+except for the beginning measurement at 30 min.
+
+# Output:
++ patient_param: Matrix of where columns are height (m) weight (kg) and sex (1 = male). Each row is a patient. 
++ patient_dose: T3 oral dose (in μg)
+"""
 function jonklaas_data()
 
     # data path
@@ -85,6 +100,8 @@ function jonklaas_data()
         # move to next row
         counter += 1
     end
+
+    patient_param[:, 1] ./= 100 # scale height from cm to meters
 
     return patient_param, patient_dose, patient_t4, patient_t3, patient_tsh
 end
