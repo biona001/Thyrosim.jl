@@ -198,7 +198,10 @@ end
     plasma_volume(height, weight, sex)
 
 # Parameters used to get reference plasma volume (Vp) values:
-
+## MCL: NEED TO DOUBLE-CHECK HEIGHT/WEIGHT
+## Blakesley data: half male, half female all of "normal weight and height" (but no values given in paper).
+## height: Average height in USA.
+## weight: I think we used approximate values from back-transforming it from BMI = 22.5?
     male_height   = 1.77
     female_height = 1.63
     male_weight   = 70.0
@@ -218,8 +221,8 @@ function plasma_volume(h, w, sex::Bool)
     BMI = w / h^2
 
     # some Vp reference volume. 
-    male_ref_vp   = 2.92
-    female_ref_vp = 2.48
+    male_ref_vp   = 2.932691217834299
+    female_ref_vp = 2.5137479938183125
 
     # calculate Ideal Weight fitted to Feldschush's data
     if sex == 1
@@ -228,10 +231,10 @@ function plasma_volume(h, w, sex::Bool)
         iw = 145.8 - 182.7 * h + 79.55 * h^2
     end
 
-    # hill function fitted to feldchush data
-    a, n, K = 1.42634 * 10^4, 0.745964264, 100.0
+    # power law fitted to Feldchush data
+    a, n = 1.26975706e+03, 3.72981228e-01
     Δiw = (w - iw) / iw * 100  #deviation from ideal weight, in percentage
-    Vb_per_kg = a * (100.0 + Δiw)^(n - 1) / ((100 + Δiw)^n + K^n)
+    Vb_per_kg = a * (100.0 + Δiw)^(n - 1)
     Vb = Vb_per_kg * w / 1000
     
     # calculate new Vp
