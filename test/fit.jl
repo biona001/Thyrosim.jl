@@ -148,12 +148,12 @@ end
     tot_loss += compute_euthyroid_dose_l2_error(sol)
     
     # when initial dose != euthyroid dose, calculate error
-#     if initial_dose != euthyroid_dose
-#         p[55] = initial_dose / 777.0
-#         prob = ODEProblem(thyrosim,ic,(0.0, tspan),p,callback=cbk)
-#         sol = solve(prob, save_idxs=7)
-#         tot_loss += compute_initial_dose_l2_error(sol)
-#     end
+    if initial_dose != euthyroid_dose
+        p[55] = initial_dose / 777.0
+        prob = ODEProblem(thyrosim,ic,(0.0, tspan),p,callback=cbk)
+        sol = solve(prob, save_idxs=7)
+        tot_loss += compute_initial_dose_l2_error(sol, euthyroid_dose, initial_dose)
+    end
 
     return tot_loss
 end
@@ -219,20 +219,20 @@ end
 end
                                     
 # distance to set penalty where the set C = [0.0, 0.5] ∪ [4.5, Inf]                       
-# @everywhere function compute_initial_dose_l2_error(sol)
-#     tot_loss = 0
-#     if any((s.retcode != :Success for s in sol))
-#         tot_loss = Inf
-#     else
-#         tsh = sol.u[end]
-#         if 2.5 <= tsh <= 4.5
-#             tot_loss += (4.5 - tsh)^2
-#         elseif 0.5 <= tsh < 2.5
-#             tot_loss += (0.5 - tsh)^2
-#         end
-#     end
-#     return tot_loss
-# end
+@everywhere function compute_initial_dose_l2_error(sol, euthyroid_dose, initial_dose)
+    tot_loss = 0
+    if any((s.retcode != :Success for s in sol))
+        tot_loss = Inf
+    else
+        tsh = sol.u[end]
+        if euthyroid_dose > initial_dose && tsh < 4.5 #original TSH too high
+            tot_loss += (4.5 - tsh)^2
+        elseif euthyroid_dose < initial_dose && tsh > 0.5 #original TSH too low
+            tot_loss += (0.5 - tsh)^2
+        end
+    end
+    return tot_loss
+end
                      
 function blakesley_tsh_error(sol, time, data, Vtsh)
     tot_loss = 0.0
@@ -289,7 +289,7 @@ function fit_all()
     
     # schneider setup
     train, test, toy = schneider_data();
-    train_data = toy
+    train_data = train
     height = SharedArray{Float64}(convert(Vector{Float64}, train_data[!, Symbol("Ht.m")]))
     weight = SharedArray{Float64}(convert(Vector{Float64}, train_data[!, Symbol("Wt.kg")]))
     sex    = SharedArray{Bool}(convert(Vector{Bool}, train_data[!, Symbol("Sex")]))
@@ -301,8 +301,8 @@ function fit_all()
     return optimize(p -> objective(p, fitting_index, 
                                    blakesley_time, my400_data, my450_data, my600_data,
                                    jonklaas_time, patient_t4, patient_t3, patient_tsh, jonklaas_patient_param, jonklaas_patient_dose,
-                                   height, weight, sex, tspan, init_tsh, euthy_dose, init_dose, verbose=false), 
-                        initial_guess, NelderMead(), Optim.Options(iterations = 500))
+                                   height, weight, sex, tspan, init_tsh, euthy_dose, init_dose, verbose=true), 
+                        initial_guess, NelderMead(), Optim.Options(iterations = 1000))
 end
 
 function prefit_error()
@@ -317,7 +317,7 @@ function prefit_error()
     jonklaas_time = [0.0; 0.5; 1.0; 2.0; 3.0; 4.0; 5.0; 6.0; 7.0; 8.0]
     jonklaas_patient_param, jonklaas_patient_dose, patient_t4, patient_t3, patient_tsh = jonklaas_data()
     # schneider setup
-    train_data = toy
+    train_data = train
     height = SharedArray{Float64}(convert(Vector{Float64}, train_data[!, Symbol("Ht.m")]))
     weight = SharedArray{Float64}(convert(Vector{Float64}, train_data[!, Symbol("Wt.kg")]))
     sex    = SharedArray{Bool}(convert(Vector{Bool}, train_data[!, Symbol("Sex")]))
@@ -344,7 +344,7 @@ function postfit_error(minimizer)
     jonklaas_time = [0.0; 0.5; 1.0; 2.0; 3.0; 4.0; 5.0; 6.0; 7.0; 8.0]
     jonklaas_patient_param, jonklaas_patient_dose, patient_t4, patient_t3, patient_tsh = jonklaas_data()
     # schneider setup
-    train_data = toy
+    train_data = train
     height = SharedArray{Float64}(convert(Vector{Float64}, train_data[!, Symbol("Ht.m")]))
     weight = SharedArray{Float64}(convert(Vector{Float64}, train_data[!, Symbol("Wt.kg")]))
     sex    = SharedArray{Bool}(convert(Vector{Bool}, train_data[!, Symbol("Sex")]))
