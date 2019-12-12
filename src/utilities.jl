@@ -137,17 +137,16 @@ end
 # train, test, toy = schneider_data()
 
 function output_plot(sol)
-    ## Need to change to pick better y limits!
     p = sol.prob.p 
-    p1 = plot(sol.t / 24.0, 777.0 * sol[1, :] / p[47], ylim=(0, 115), label="",
+    p1 = plot(sol.t / 24.0, 777.0 * sol[1, :] / p[47], ylim=(0, 1.2maximum(777.0 * sol[1, :] / p[47]), label="",
        ylabel="T4", title="Thyrosim simulation")
     p1 = hline!([45, 120], label= "")
     
-    p2 = plot(sol.t / 24.0, 651.0 * sol[4, :] / p[47], ylim=(0, 4), label="", 
+    p2 = plot(sol.t / 24.0, 651.0 * sol[4, :] / p[47], ylim=(0, 1.2maximum(651.0 * sol[4, :] / p[47])), label="", 
        ylabel="T3")
     p2 = hline!([0.6, 1.8], label= "")
     
-    p3 = plot(sol.t / 24.0, 5.6 * sol[7, :] / p[48], ylim=(0, 10), label="",
+    p3 = plot(sol.t / 24.0, 5.6 * sol[7, :] / p[48], ylim=(0, 1.2maximum(5.6 * sol[7, :] / p[48])), label="",
        ylabel="TSH", xlabel="time [days]")
     p3 = hline!([0.45, 4.5], label= "")
     

@@ -9,7 +9,6 @@ addprocs(10)
     using SharedArrays
 end
 
-using Plots
 using Optim
 
 function objective(

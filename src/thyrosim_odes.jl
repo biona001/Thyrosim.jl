@@ -2,7 +2,7 @@
 Initial conditions for original thyrosim model
 """
 function initialize_original_thyrosim(
-    dial::Vector{Float64} = [1.0; 0.88; 1.0; 0.88],
+    dial::Vector{Float64} = [1.0; 0.88; 1.0; 0.88];
     scale_Vp::Bool = true,
     height=1.77,
     weight=70,
