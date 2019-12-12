@@ -138,7 +138,7 @@ end
 
 function output_plot(sol)
     p = sol.prob.p 
-    p1 = plot(sol.t / 24.0, 777.0 * sol[1, :] / p[47], ylim=(0, 1.2maximum(777.0 * sol[1, :] / p[47]), label="",
+    p1 = plot(sol.t / 24.0, 777.0 * sol[1, :] / p[47], ylim=(0, 1.2maximum(777.0 * sol[1, :] / p[47])), label="",
        ylabel="T4", title="Thyrosim simulation")
     p1 = hline!([45, 120], label= "")
     
