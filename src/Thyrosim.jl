@@ -8,13 +8,13 @@ module Thyrosim
     export initialize!, set_patient_ic!
     export plot_jonklaas, plot_blakesley
 
-	using ExcelReaders, CSV
-	import Plots:plot, hline!, scatter!
+    using ExcelReaders, CSV
+    import Plots:plot, hline!, scatter!
 
     include("thyrosim_odes.jl")
     include("utilities.jl")
 
     # data directory, data not publically availble. 
-	datadir(parts...) = joinpath(@__DIR__, "..", "data", parts...)
+    datadir(parts...) = joinpath(@__DIR__, "..", "data", parts...)
 
 end # module
