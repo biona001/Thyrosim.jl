@@ -6,7 +6,7 @@ module Thyrosim
     export thyrosim, original_thyrosim, output_plot
     export blakesley_data, jonklaas_data, schneider_data
     export initialize!, set_patient_ic!
-    export plot_jonklaas, plot_blakesley
+    export plot_jonklaas, plot_blakesley, plot_jonklaas_T3only
 
     using ExcelReaders, CSV
     import Plots:plot, hline!, scatter!

@@ -136,24 +136,37 @@ function schneider_data()
 end
 # train, test, toy = schneider_data()
 
-function output_plot(sol; title::AbstractString = "Thyrosim simulation")
+function output_plot(sol; title::AbstractString = "Thyrosim simulation", automargins::Bool=true)
+
+    # parameters to adjust figure limits
     p = sol.prob.p 
-    p1 = plot(sol.t / 24.0, 777.0 * sol[1, :] / p[47], ylim=(0, 1.2maximum(777.0 * sol[1, :] / p[47])), label="",
+    t4lim, t3lim, tshlim = 140, 4, 10
+    T4 = 777.0 * sol[1, :] / p[47]
+    T3 = 651.0 * sol[4, :] / p[47]
+    TSH = 5.6 * sol[7, :] / p[48]
+    if automargins
+        t4lim = max(1.2maximum(T4), 110.0)
+        t3lim = max(1.2maximum(T3), 2.5)
+        tshlim = max(1.2maximum(TSH), 5.5)
+    end
+
+    p1 = plot(sol.t / 24.0, T4, ylim=(0, t4lim), label="",
        ylabel="T4 (mcg/L)", title=title)
     p1 = hline!([45, 120], label= "")
     
-    p2 = plot(sol.t / 24.0, 651.0 * sol[4, :] / p[47], ylim=(0, 1.2maximum(651.0 * sol[4, :] / p[47])), label="", 
+    p2 = plot(sol.t / 24.0, T3, ylim=(0, t3lim), label="", 
        ylabel="T3 (mcg/L)")
     p2 = hline!([0.6, 1.8], label= "")
     
-    p3 = plot(sol.t / 24.0, 5.6 * sol[7, :] / p[48], ylim=(0, 1.2maximum(5.6 * sol[7, :] / p[48])), label="",
+    p3 = plot(sol.t / 24.0, TSH, ylim=(0, tshlim), label="",
        ylabel="TSH (mU/L)", xlabel="time [days]")
     p3 = hline!([0.45, 4.5], label= "")
     
     plot(p1, p2, p3, layout=(3, 1))
 end
 
-function plot_blakesley(sol, which::AbstractString="400"; title::AbstractString = "Thyrosim simulation (Blakesley data)")
+function plot_blakesley(sol, which::AbstractString="400"; 
+    title::AbstractString = "Thyrosim simulation (Blakesley data)", automargins::Bool=true)
     markersize = 2
     t_data, data400, data450, data600 = blakesley_data()
     if which == "400"
@@ -168,19 +181,30 @@ function plot_blakesley(sol, which::AbstractString="400"; title::AbstractString 
     
     t_data = t_data / 24.0
 
-    ## Need to change to pick better y limits!
+    # parameters to adjust figure limits
     p = sol.prob.p 
-    p1 = plot(sol.t / 24.0, 777.0 * sol[1, :] / p[47], ylim=(0, 140), label="",
+    t4lim, t3lim, tshlim = 140, 4, 10
+    T4 = 777.0 * sol[1, :] / p[47]
+    T3 = 651.0 * sol[4, :] / p[47]
+    TSH = 5.6 * sol[7, :] / p[48]
+    if automargins
+        t4lim = max(1.2maximum(T4), 110.0)
+        t3lim = max(1.2maximum(T3), 2.5)
+        tshlim = max(1.2maximum(TSH), 5.5)
+    end
+
+    ## Need to change to pick better y limits!
+    p1 = plot(sol.t / 24.0, T4, ylim=(0, t4lim), label="",
        ylabel="T4 (mcg/L)", title=title)
     p1 = hline!([45, 105], label= "")
     p1 = scatter!(t_data, data[:, 1], label="", markersize=markersize)
     
-    p2 = plot(sol.t / 24.0, 651.0 * sol[4, :] / p[47], ylim=(0, 4), label="", 
+    p2 = plot(sol.t / 24.0, T3, ylim=(0, t3lim), label="", 
        ylabel="T3 (mcg/L)")
     p2 = hline!([0.6, 1.8], label= "")
     p2 = scatter!(t_data, data[:, 2], label="", markersize=markersize)
     
-    p3 = plot(sol.t / 24.0, 5.6 * sol[7, :] / p[48], ylim=(0, 10), label="",
+    p3 = plot(sol.t / 24.0, TSH, ylim=(0, tshlim), label="",
        ylabel="TSH (mU/L)", xlabel="time [days]")
     p3 = hline!([0.45, 4.5], label= "")
     p3 = scatter!(t_data, data[:, 3], label="", markersize=markersize)
@@ -189,28 +213,63 @@ function plot_blakesley(sol, which::AbstractString="400"; title::AbstractString 
 end
 
 function plot_jonklaas(sol, T4data::Vector, T3data::Vector, TSHdata::Vector; 
-        title::AbstractString="Thyrosim simulation (Jonklaas data)")
-    markersize = 2
+        title::AbstractString="Thyrosim simulation (Jonklaas data)", automargins::Bool=true)
 
+    markersize = 2
     #time in which data are measured
     t_data = [0.0; 0.5; 1.0; 2.0; 3.0; 4.0; 5.0; 6.0; 7.0; 8.0] 
 
-    ## Need to change to pick better y limits!
+    # parameters to adjust figure limits
     p = sol.prob.p 
-    p1 = plot(sol.t, 777.0 * sol[1, :] / p[47], ylim=(0, 140), label="",
+    t4lim, t3lim, tshlim = 140, 4, 10
+    T4 = 777.0 * sol[1, :] / p[47]
+    T3 = 651.0 * sol[4, :] / p[47]
+    TSH = 5.6 * sol[7, :] / p[48]
+    if automargins
+        t4lim = max(1.2maximum(T4), 110.0)
+        t3lim = max(1.2maximum(T3), 2.5)
+        tshlim = max(1.2maximum(TSH), 5.5)
+    end
+
+    ## Need to change to pick better y limits!
+    p1 = plot(sol.t, T4, ylim=(0, t4lim), label="",
        ylabel="T4 (mcg/L)", title=title)
     p1 = hline!([45, 105], label= "")
     p1 = scatter!(t_data, T4data, label="", markersize=markersize)
     
-    p2 = plot(sol.t, 651.0 * sol[4, :] / p[47], ylim=(0, 4), label="", 
+    p2 = plot(sol.t, T3, ylim=(0, t3lim), label="", 
        ylabel="T3 (mcg/L)")
     p2 = hline!([0.6, 1.8], label= "")
     p2 = scatter!(t_data, T3data, label="", markersize=markersize)
     
-    p3 = plot(sol.t, 5.6 * sol[7, :] / p[48], ylim=(0, 10), label="",
+    p3 = plot(sol.t, TSH, ylim=(0, tshlim), label="",
        ylabel="TSH (mU/L)", xlabel="time [days]")
     p3 = hline!([0.45, 4.5], label= "")
     p3 = scatter!(t_data, TSHdata, label="", markersize=markersize)
     
     plot(p1, p2, p3, layout=(3, 1))
+end
+
+function plot_jonklaas_T3only(sol, T3data::Vector; 
+    title::AbstractString="Thyrosim simulation (Jonklaas data)", automargins::Bool=true)
+    markersize = 2
+
+    #time in which data are measured
+    t_data = [0.0; 0.5; 1.0; 2.0; 3.0; 4.0; 5.0; 6.0; 7.0; 8.0] 
+
+    # parameters to adjust figure limits
+    p = sol.prob.p 
+    t3lim = 4
+    T3 = 651.0 * sol[4, :] / p[47]
+    if automargins
+        t3lim = max(1.2maximum(T3), 2.5)
+    end
+
+    ## Need to change to pick better y limits!
+    p2 = plot(sol.t, T3, ylim=(0, t3lim), label="", 
+       ylabel="T3 (mcg/L)", title=title)
+    p2 = hline!([0.6, 1.8], label= "")
+    p2 = scatter!(t_data, T3data, label="", markersize=markersize)
+
+    plot(p2)
 end
