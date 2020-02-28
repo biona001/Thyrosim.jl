@@ -200,8 +200,24 @@ end
     end
     return tot_loss
 end
-                      
+                  
 # distance to set penalty where the set C = [0.5, 4.5]
+# @everywhere function compute_euthyroid_dose_l2_error(sol, Vtsh)
+#     tot_loss = 0.0
+#     if any((s.retcode != :Success for s in sol))
+#         tot_loss = Inf
+#     else
+#         tsh = sol.u[end] * 5.6 / Vtsh
+#         if tsh > 4.5
+#             tot_loss += (tsh - 4.5)^2
+#         elseif tsh < 0.5
+#             tot_loss += (0.5 - tsh)^2
+#         end
+#     end
+#     return tot_loss
+# end
+
+# distance to set penalty in log scale
 @everywhere function compute_euthyroid_dose_l2_error(sol, Vtsh)
     tot_loss = 0.0
     if any((s.retcode != :Success for s in sol))
@@ -209,15 +225,30 @@ end
     else
         tsh = sol.u[end] * 5.6 / Vtsh
         if tsh > 4.5
-            tot_loss += (tsh - 4.5)^2
+            tot_loss += log(tsh / 4.5)
         elseif tsh < 0.5
-            tot_loss += (0.5 - tsh)^2
+            tot_loss += log(0.5 / tsh)
         end
     end
     return tot_loss
 end
                                     
 # distance to set penalty where the set C = [0.0, 0.5] ∪ [4.5, Inf]                       
+# @everywhere function compute_initial_dose_l2_error(sol, euthyroid_dose, initial_dose, Vtsh)
+#     tot_loss = 0
+#     if any((s.retcode != :Success for s in sol))
+#         tot_loss = Inf
+#     else
+#         tsh = sol.u[end] * 5.6 / Vtsh
+#         if euthyroid_dose > initial_dose && tsh < 4.5 #original TSH too high
+#             tot_loss += (4.5 - tsh)^2
+#         elseif euthyroid_dose < initial_dose && tsh > 0.5 #original TSH too low
+#             tot_loss += (0.5 - tsh)^2
+#         end
+#     end
+#     return tot_loss
+# end
+                                                
 @everywhere function compute_initial_dose_l2_error(sol, euthyroid_dose, initial_dose, Vtsh)
     tot_loss = 0
     if any((s.retcode != :Success for s in sol))
@@ -225,9 +256,9 @@ end
     else
         tsh = sol.u[end] * 5.6 / Vtsh
         if euthyroid_dose > initial_dose && tsh < 4.5 #original TSH too high
-            tot_loss += (4.5 - tsh)^2
+            tot_loss += log(4.5 / tsh)
         elseif euthyroid_dose < initial_dose && tsh > 0.5 #original TSH too low
-            tot_loss += (0.5 - tsh)^2
+            tot_loss += log(tsh / 0.5)
         end
     end
     return tot_loss
@@ -274,12 +305,10 @@ end
 
 function fit_all()
     # initialize initial guess and fitting index
-    fitting_index = SharedArray{Int}([28; 45; 30; 31; 49; 50; 51; 52; 53; 54])
-    #initial_guess = [ 0.8892067744277633;1.6882221360501146;69.90379778202167;38.71161774205076;  
-    #              6.039888256864343; 3.7006563259936747;8.748185980217668;6.590694001313398; 
-    #              2.896554559451672;13.013203952637502]
-    #initial_guess = [0.6039222046641435, 22.087463157341936, 103.36585765448072, 89.55523275731187, 67.93860849674263, 3.646391720870975, 0.0400965033683874, 7.134927653438794, 5.973788223841496, 23.971174120935313] 
-    initial_guess = [0.9839676473791177, 2.201713585737176, 50.60926988053458, 41.53317498972499, 5.632498326934327, 3.767043137555125, 0.06480191865945219, 6.311850169567261, 5.795610284224643, 19.008998605794044]
+    fitting_index = SharedArray{Int}([5; 6; 28; 45; 30; 31; 49; 50; 51; 52; 53; 54])
+    initial_guess = [ 584.0; 1503.0; 0.8892067744277633;1.6882221360501146;69.90379778202167;
+                38.71161774205076; 6.039888256864343; 3.7006563259936747;8.748185980217668;6.590694001313398;
+                2.896554559451672;13.013203952637502]
 
     # blakesley setup 
     blakesley_time, my400_data, my450_data, my600_data = blakesley_data()
@@ -308,12 +337,11 @@ end
 
 function prefit_error()
     # initialize initial guess and fitting index
-    fitting_index = SharedArray{Int}([28; 45; 30; 31; 49; 50; 51; 52; 53; 54])
-    #initial_guess = [ 0.8892067744277633;1.6882221360501146;69.90379778202167;38.71161774205076;  
-    #                  6.039888256864343; 3.7006563259936747;8.748185980217668;6.590694001313398; 
-    #                  2.896554559451672;13.013203952637502]
-    #initial_guess = [0.6039222046641435, 22.087463157341936, 103.36585765448072, 89.55523275731187, 67.93860849674263, 3.646391720870975, 0.0400965033683874, 7.134927653438794, 5.973788223841496, 23.971174120935313]
-    initial_guess = [0.9839676473791177, 2.201713585737176, 50.60926988053458, 41.53317498972499, 5.632498326934327, 3.767043137555125, 0.06480191865945219, 6.311850169567261, 5.795610284224643, 19.008998605794044]
+    fitting_index = SharedArray{Int}([5; 6; 28; 45; 30; 31; 49; 50; 51; 52; 53; 54])
+    initial_guess = [ 584.0; 1503.0; 0.8892067744277633;1.6882221360501146;69.90379778202167;
+                38.71161774205076; 6.039888256864343; 3.7006563259936747;8.748185980217668;6.590694001313398;
+                2.896554559451672;13.013203952637502]
+
     # blakesley setup 
     blakesley_time, my400_data, my450_data, my600_data = blakesley_data()
     # jonklaas setup
@@ -337,11 +365,9 @@ function prefit_error()
 end
 
 function postfit_error(minimizer)
-    # initialize initial guess and fitting index
-    fitting_index = SharedArray{Int}([28; 45; 30; 31; 49; 50; 51; 52; 53; 54])
-    initial_guess = [ 0.8892067744277633;1.6882221360501146;69.90379778202167;38.71161774205076;  
-                      6.039888256864343; 3.7006563259936747;8.748185980217668;6.590694001313398; 
-                      2.896554559451672;13.013203952637502]
+    # need to know fitting index
+    fitting_index = SharedArray{Int}([5; 6; 28; 45; 30; 31; 49; 50; 51; 52; 53; 54])
+
     # blakesley setup 
     blakesley_time, my400_data, my450_data, my600_data = blakesley_data()
     # jonklaas setup
