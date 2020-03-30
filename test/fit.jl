@@ -91,7 +91,7 @@ function objective(
         sol  = solve(prob, save_idxs=4)
         jonklaas_err += jonklaas_error(sol, jonklaas_time, jonklaas_patient_t3[i, :], p[47])
     end
-    scaled_jonklaas_error = jonklaas_err / 135.0
+    scaled_jonklaas_error = jonklaas_err / 135.0 * 10.0 # scale by 10 to match schneider&blakesley error range
     verbose && println("jonklaas error: unscaled = $jonklaas_err, scaled = $scaled_jonklaas_error")
     total_scale_error += scaled_jonklaas_error
     #
@@ -200,7 +200,7 @@ end
     end
     return tot_loss
 end
-                  
+                      
 # distance to set penalty where the set C = [0.5, 4.5]
 # @everywhere function compute_euthyroid_dose_l2_error(sol, Vtsh)
 #     tot_loss = 0.0
@@ -256,7 +256,7 @@ end
     else
         tsh = sol.u[end] * 5.6 / Vtsh
         if euthyroid_dose > initial_dose && tsh < 4.5 #original TSH too high
-            tot_loss += log(4.5 / tsh)
+            tot_loss += log(4.5 / tsh) / (91 / 400)
         elseif euthyroid_dose < initial_dose && tsh > 0.5 #original TSH too low
             tot_loss += log(tsh / 0.5)
         end
@@ -306,9 +306,9 @@ end
 function fit_all()
     # initialize initial guess and fitting index
     fitting_index = SharedArray{Int}([5; 6; 28; 45; 30; 31; 49; 50; 51; 52; 53; 54])
-    initial_guess = [ 584.0; 1503.0; 0.8892067744277633;1.6882221360501146;69.90379778202167;
-                38.71161774205076; 6.039888256864343; 3.7006563259936747;8.748185980217668;6.590694001313398;
-                2.896554559451672;13.013203952637502]
+    initial_guess = [ 584.0; 1503.0; 0.8892067744277633;1.6882221360501146;
+        69.90379778202167;38.71161774205076; 6.039888256864343; 3.7006563259936747;
+        8.748185980217668;6.590694001313398;2.896554559451672;13.013203952637502]
 
     # blakesley setup 
     blakesley_time, my400_data, my450_data, my600_data = blakesley_data()
@@ -331,16 +331,16 @@ function fit_all()
     return optimize(p -> objective(p, fitting_index, 
                                    blakesley_time, my400_data, my450_data, my600_data,
                                    jonklaas_time, patient_t4, patient_t3, patient_tsh, jonklaas_patient_param, jonklaas_patient_dose,
-                                   height, weight, sex, tspan, init_tsh, euthy_dose, init_dose, verbose=true), 
-                        initial_guess, NelderMead(), Optim.Options(iterations = 1200))
+                                   height, weight, sex, tspan, init_tsh, euthy_dose, init_dose, verbose=false), 
+                        initial_guess, NelderMead(), Optim.Options(time_limit = 79200))
 end
 
 function prefit_error()
     # initialize initial guess and fitting index
     fitting_index = SharedArray{Int}([5; 6; 28; 45; 30; 31; 49; 50; 51; 52; 53; 54])
-    initial_guess = [ 584.0; 1503.0; 0.8892067744277633;1.6882221360501146;69.90379778202167;
-                38.71161774205076; 6.039888256864343; 3.7006563259936747;8.748185980217668;6.590694001313398;
-                2.896554559451672;13.013203952637502]
+    initial_guess = [ 584.0; 1503.0; 0.8892067744277633;1.6882221360501146;
+        69.90379778202167;38.71161774205076; 6.039888256864343; 3.7006563259936747;
+        8.748185980217668;6.590694001313398;2.896554559451672;13.013203952637502]
 
     # blakesley setup 
     blakesley_time, my400_data, my450_data, my600_data = blakesley_data()
