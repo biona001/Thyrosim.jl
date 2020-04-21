@@ -58,19 +58,22 @@ function objective(
     prob_400 = ODEProblem(thyrosim,ic,tspan,p_400,callback=cbk)
     prob_450 = ODEProblem(thyrosim,ic,tspan,p_450,callback=cbk)
     prob_600 = ODEProblem(thyrosim,ic,tspan,p_600,callback=cbk)
-    sol_400 = solve(prob_400, save_idxs=[1, 7])
-    sol_450 = solve(prob_450, save_idxs=[1, 7])
-    sol_600 = solve(prob_600, save_idxs=[1, 7])
+    sol_400 = solve(prob_400, save_idxs=[1, 4, 7])
+    sol_450 = solve(prob_450, save_idxs=[1, 4, 7])
+    sol_600 = solve(prob_600, save_idxs=[1, 4, 7])
     T4_error = blakesley_t4_error(sol_400, blakesley_time, blakesley_my400_data, p[47]) + 
                blakesley_t4_error(sol_450, blakesley_time, blakesley_my450_data, p[47]) + 
                blakesley_t4_error(sol_600, blakesley_time, blakesley_my600_data, p[47])
+    T3_error = blakesley_t3_error(sol_400, blakesley_time, blakesley_my400_data, p[47]) + 
+               blakesley_t3_error(sol_450, blakesley_time, blakesley_my450_data, p[47]) + 
+               blakesley_t3_error(sol_600, blakesley_time, blakesley_my600_data, p[47])
     TSH_error = blakesley_tsh_error(sol_400, blakesley_time, blakesley_my400_data, p[48]) + 
                 blakesley_tsh_error(sol_450, blakesley_time, blakesley_my450_data, p[48]) + 
                 blakesley_tsh_error(sol_600, blakesley_time, blakesley_my600_data, p[48])
-    blakesley_err = 0.01T4_error + TSH_error
-    scaled_blakesley_error = blakesley_err / 198 # divide total error by number of data
+    blakesley_err = 0.01T4_error + T3_error + TSH_error
+    scaled_blakesley_error = blakesley_err / 297 # divide total error by number of data 198 = T4 and TSH, 297 = T4,T3,TSH 
     verbose && println("blakesley error: unscaled = $blakesley_err, scaled = $scaled_blakesley_error")
-    total_scale_error += blakesley_err
+    total_scale_error += scaled_blakesley_error
     #
     # Jonklaas
     #
@@ -91,10 +94,10 @@ function objective(
         sol  = solve(prob, save_idxs=4)
         jonklaas_err += jonklaas_error(sol, jonklaas_time, jonklaas_patient_t3[i, :], p[47])
     end
-#     jonklaas_err *= 10.0 # scale by 10 to match schneider&blakesley error range
+    jonklaas_err *= 10.0 # scale by 10 to match schneider&blakesley error range
     scaled_jonklaas_error = jonklaas_err / 135.0
     verbose && println("jonklaas error: unscaled = $jonklaas_err, scaled = $scaled_jonklaas_error")
-    total_scale_error += jonklaas_err
+    total_scale_error += scaled_jonklaas_error
     #
     # Schneider
     #
@@ -109,7 +112,7 @@ function objective(
     end
     scaled_schneider_err = schneider_err / num_sample
     verbose && println("schneider error: unscaled = $schneider_err, scaled = $scaled_schneider_err")
-    total_scale_error += schneider_err
+    total_scale_error += scaled_schneider_err
     #
     # Return final error
     #
@@ -162,18 +165,15 @@ end
 function blakesley_condition(u, t, integrator)
     return t - 24.0
 end
-
 # gives T3 dose at hour 0
 function jonklaas_condition(u, t, integrator)
     return t - 0.01 #cannot make this exactly 0
 end
-
 # define function for adding dose
 @everywhere function add_dose!(integrator)
     integrator.u[10] += integrator.p[55]
     integrator.u[12] += integrator.p[56]
 end
-
 @everywhere function compute_euthyroid_dose_error(sol, Vtsh)
     tot_loss = 0
     if any((s.retcode != :Success for s in sol))
@@ -187,7 +187,6 @@ end
     end
     return tot_loss
 end
-  
 @everywhere function compute_initial_dose_error(sol, Vtsh)
     tot_loss = 0
     if any((s.retcode != :Success for s in sol))
@@ -201,7 +200,6 @@ end
     end
     return tot_loss
 end
-                      
 # distance to set penalty where the set C = [0.5, 4.5]
 # @everywhere function compute_euthyroid_dose_l2_error(sol, Vtsh)
 #     tot_loss = 0.0
@@ -217,7 +215,6 @@ end
 #     end
 #     return tot_loss
 # end
-
 # distance to set penalty in log scale
 @everywhere function compute_euthyroid_dose_l2_error(sol, Vtsh)
     tot_loss = 0.0
@@ -233,7 +230,6 @@ end
     end
     return tot_loss
 end
-                                    
 # distance to set penalty where the set C = [0.0, 0.5] ∪ [4.5, Inf]                       
 # @everywhere function compute_initial_dose_l2_error(sol, euthyroid_dose, initial_dose, Vtsh)
 #     tot_loss = 0
@@ -249,7 +245,6 @@ end
 #     end
 #     return tot_loss
 # end
-                                                
 @everywhere function compute_initial_dose_l2_error(sol, euthyroid_dose, initial_dose, Vtsh)
     tot_loss = 0
     if any((s.retcode != :Success for s in sol))
@@ -257,27 +252,13 @@ end
     else
         tsh = sol.u[end] * 5.6 / Vtsh
         if euthyroid_dose > initial_dose && tsh < 4.5 #original TSH too high
-            tot_loss += log(4.5 / tsh) / (91 / 400)
+            tot_loss += log(4.5 / tsh)
         elseif euthyroid_dose < initial_dose && tsh > 0.5 #original TSH too low
             tot_loss += log(tsh / 0.5)
         end
     end
     return tot_loss
 end
-                     
-function blakesley_tsh_error(sol, time, data, Vtsh)
-    tot_loss = 0.0
-    if any((s.retcode != :Success for s in sol))
-        tot_loss = Inf
-    else
-        for i in 1:length(time)
-            predicted_tsh = sol(time[i])[2] * 5.6 / Vtsh
-            tot_loss += (predicted_tsh - data[i, 3])^2
-        end
-    end
-    return tot_loss
-end
-            
 function blakesley_t4_error(sol, time, data, Vp)
     tot_loss = 0.0
     if any((s.retcode != :Success for s in sol))
@@ -290,7 +271,30 @@ function blakesley_t4_error(sol, time, data, Vp)
     end
     return tot_loss
 end
-                                                
+function blakesley_t3_error(sol, time, data, Vp)
+    tot_loss = 0.0
+    if any((s.retcode != :Success for s in sol))
+        tot_loss = Inf
+    else
+        for i in 1:length(time)
+            T3_predicted = sol(time[i])[2] * 651.0 / Vp
+            tot_loss += (T3_predicted - data[i, 2])^2
+        end
+    end
+    return tot_loss
+end
+function blakesley_tsh_error(sol, time, data, Vtsh)
+    tot_loss = 0.0
+    if any((s.retcode != :Success for s in sol))
+        tot_loss = Inf
+    else
+        for i in 1:length(time)
+            predicted_tsh = sol(time[i])[3] * 5.6 / Vtsh
+            tot_loss += (predicted_tsh - data[i, 3])^2
+        end
+    end
+    return tot_loss
+end
 function jonklaas_error(sol, time, data, Vp)
     tot_loss = 0.0
     if any((s.retcode != :Success for s in sol))
@@ -303,7 +307,6 @@ function jonklaas_error(sol, time, data, Vp)
     end
     return tot_loss
 end
-
 function fit_all()
     # initialize initial guess and fitting index
     fitting_index = SharedArray{Int}([12; 29; 28; 45; 30; 31; 49; 50; 51; 52; 53; 54])
@@ -332,8 +335,8 @@ function fit_all()
     return optimize(p -> objective(p, fitting_index, 
                                    blakesley_time, my400_data, my450_data, my600_data,
                                    jonklaas_time, patient_t4, patient_t3, patient_tsh, jonklaas_patient_param, jonklaas_patient_dose,
-                                   height, weight, sex, tspan, init_tsh, euthy_dose, init_dose, verbose=false), 
-                        initial_guess, NelderMead(), Optim.Options(time_limit = 300.0, iterations = 1000))
+                                   height, weight, sex, tspan, init_tsh, euthy_dose, init_dose, verbose=false), initial_guess, 
+        NelderMead(), Optim.Options(time_limit = 79200, iterations = 10000, g_tol=1e-5))
 end
 
 function prefit_error()
