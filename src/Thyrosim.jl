@@ -8,7 +8,10 @@ module Thyrosim
     export initialize!, set_patient_ic!
     export plot_jonklaas, plot_blakesley, plot_jonklaas_T3only
 
-    using ExcelReaders, CSV
+    using CSV
+    using DelimitedFiles
+    using DifferentialEquations
+    
     import Plots:plot, hline!, scatter!
 
     include("thyrosim_odes.jl")
