@@ -78,12 +78,13 @@ except for the beginning measurement at 30 min.
 function jonklaas_data()
     datapath = normpath(Thyrosim.datadir())
 
+    patient_dose  = [30 30 45 45 30 30 45 30 30 30 45 45 45 45 30] # mcg of T3
     patient_param = readdlm(datapath * "/jonklaas/patient_param.csv", ',')
     patient_t4    = readdlm(datapath * "/jonklaas/patient_t4.csv", ',')
     patient_t3    = readdlm(datapath * "/jonklaas/patient_t3.csv", ',')
     patient_tsh   = readdlm(datapath * "/jonklaas/patient_tsh.csv", ',')
 
-    return patient_param, patient_t4, patient_t3, patient_tsh
+    return patient_param, patient_dose, patient_t4, patient_t3, patient_tsh
 end
 
 # function parse_jonklaas_excel()
