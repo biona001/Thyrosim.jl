@@ -8,10 +8,10 @@
 function blakesley_data()
     datapath = normpath(Thyrosim.datadir())
 
-    my_time    = readdlm(datapath * "/blakesley/blakesley.time.csv")
-    my400_data = readdlm(datapath * "/blakesley/blakesley.400data.csv")
-    my450_data = readdlm(datapath * "/blakesley/blakesley.450data.csv")
-    my600_data = readdlm(datapath * "/blakesley/blakesley.600data.csv")
+    my_time    = readdlm(datapath * "/blakesley/blakesley.time.csv", ',')
+    my400_data = readdlm(datapath * "/blakesley/blakesley.400data.csv", ',')
+    my450_data = readdlm(datapath * "/blakesley/blakesley.450data.csv", ',')
+    my600_data = readdlm(datapath * "/blakesley/blakesley.600data.csv", ',')
 
     return my_time, my400_data, my450_data, my600_data
 end
@@ -78,10 +78,10 @@ except for the beginning measurement at 30 min.
 function jonklaas_data()
     datapath = normpath(Thyrosim.datadir())
 
-    patient_param = readdlm(datapath * "/jonklaas/patient_param.csv")
-    patient_t4    = readdlm(datapath * "/jonklaas/patient_t4.csv")
-    patient_t3    = readdlm(datapath * "/jonklaas/patient_t3.csv")
-    patient_tsh   = readdlm(datapath * "/jonklaas/patient_tsh.csv")
+    patient_param = readdlm(datapath * "/jonklaas/patient_param.csv", ',')
+    patient_t4    = readdlm(datapath * "/jonklaas/patient_t4.csv", ',')
+    patient_t3    = readdlm(datapath * "/jonklaas/patient_t3.csv", ',')
+    patient_tsh   = readdlm(datapath * "/jonklaas/patient_tsh.csv", ',')
 
     return patient_param, patient_t4, patient_t3, patient_tsh
 end
