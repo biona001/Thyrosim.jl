@@ -125,7 +125,7 @@ function initialize(
     ic[19] = 3.55364471589659
 
     # Parameter values
-    p = zeros(Float64, 60)
+    p = zeros(Float64, 61)
     p[1] = 0.00174155      #S4
     p[2] = 8               #tau
     p[3] = 0.868           #k12
@@ -189,12 +189,16 @@ function initialize(
         p[48] = Vtsh
     end
 
-    p[55] = dial[1]
-    p[56] = dial[2]
-    p[57] = dial[3]
-    p[58] = dial[4]
+    # p[55] = 0.0 # T4 oral dose
+    # p[56] = 0.0 # T3 oral dose
 
-    #TODO: setup p[60] = phase
+    # dial parameters 
+    p[57] = dial[1] # controls T4 secretion rate
+    p[58] = dial[2] # controls T4 excretion rate
+    p[59] = dial[3] # controls T3 secretion rate
+    p[60] = dial[4] # controls T3 excretion rate
+
+    #TODO: setup p[61] = phase
 
     return ic, p
 end
@@ -311,10 +315,10 @@ function thyrosim(dq, q, p, t)
     # Auxillary equations
     q4F = (p[24]+ p[25] * q[1] + p[26] * q[1]^2 + p[27] *q[1]^3) * q[4] #FT3p
     q1F = (p[7] + p[8] * q[1] + p[9] * q[1]^2 + p[10] * q[1]^3) * q[1]  #FT4p
-    SR3 = ((p[19] * p[57]) * q[19])                                        #Brain delay (dial 3)
-    SR4 = ((p[1] * p[55]) * q[19])                                         #Brain delay (dial 1)
+    SR3 = (p[19] * p[59] * q[19])                                        #Brain delay (dial 3)
+    SR4 = (p[1] * p[57] * q[19])                                         #Brain delay (dial 1)
     fCIRC = q[9]^p[51] / (q[9]^p[51] + p[49]^p[51])
-    SRTSH = (p[30]+p[31]*fCIRC*sin(pi/12*(t+p[60])-p[33]))*(p[50]^p[52]/(p[50]^p[52] + q[9]^p[52]))
+    SRTSH = (p[30]+p[31]*fCIRC*sin(pi/12*(t+p[61])-p[33]))*(p[50]^p[52]/(p[50]^p[52] + q[9]^p[52]))
     fdegTSH = p[34] + p[35] / (p[36] + q[7])
     fLAG = p[41] + 2*q[8]^11 / (p[42]^11 + q[8]^11)
     f4 = p[37]*(1 + 5*(p[53]^p[54]) / (p[53]^p[54]+q[8]^p[54]))
@@ -331,9 +335,9 @@ function thyrosim(dq, q, p, t)
     dq[8]  = f4 / p[38] * q[1] + p[37] / p[39] * q[4] - p[40] * q[8]          #T3B
     dq[9]  = fLAG * (q[8] - q[9])                                             #T3B LAG
     dq[10] = -p[43] * q[10]                                                   #T4PILLdot
-    dq[11] =  p[43] * q[10] - ((p[44] * p[56]) + p[11]) * q[11]                         #T4GUTdot
+    dq[11] =  p[43] * q[10] - (p[44] * p[58]+ p[11]) * q[11]                         #T4GUTdot
     dq[12] = -p[45] * q[12]                                                   #T3PILLdot
-    dq[13] =  p[45] * q[12] - ((p[46] * p[58]) + p[28]) * q[13]                         #T3GUTdot
+    dq[13] =  p[45] * q[12] - (p[46] * p[60] + p[28]) * q[13]                         #T3GUTdot
 
     # Delay ODEs
     dq[14] = kdelay * (q[7] - q[14]) 
