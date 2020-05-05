@@ -125,8 +125,8 @@ function initialize(
     ic[19] = 3.55364471589659
 
     # Parameter values
-    p = zeros(Float64, 60)
-    p[1] = 0.00174155 * dial[1]     #S4
+    p = zeros(Float64, 61)
+    p[1] = 0.00174155      #S4
     p[2] = 8               #tau
     p[3] = 0.868           #k12
     p[4] = 0.108           #k13
@@ -144,7 +144,7 @@ function initialize(
     p[16] = 95             #KmD1slow
     p[17] = 0.00074619     #VmaxD2slow
     p[18] = 0.075          #KmD2slow
-    p[19] = 3.3572*10^-4 * dial[3]   #S3
+    p[19] = 3.3572*10^-4   #S3
     p[20] = 5.37           #k45
     p[21] = 0.0689         #k46
     p[22] = 127            #k64free
@@ -169,9 +169,9 @@ function initialize(
     p[41] = 0.0034         #KLAG-HYPO
     p[42] = 5              #KLAG
     p[43] = 1.3            #k4dissolve
-    p[44] = 0.12 * dial[2] #k4excrete; originally 0.119 (change with dial 2)
+    p[44] = 0.12           #k4excrete; originally 0.119 (change with dial 2)
     p[45] = 1.78           #k3dissolve
-    p[46] = 0.12 * dial[4] #k3excrete; originally 0.118 (change with dial 4)
+    p[46] = 0.12           #k3excrete; originally 0.118 (change with dial 4)
     p[47] = 3.2            #Vp
     p[48] = 5.2            #VTSH
 
@@ -189,7 +189,16 @@ function initialize(
         p[48] = Vtsh
     end
 
-    #TODO: setup p[60] = phase
+    # p[55] = 0.0 # T4 oral dose
+    # p[56] = 0.0 # T3 oral dose
+
+    # dial parameters 
+    p[57] = dial[1] # controls T4 secretion rate
+    p[58] = dial[2] # controls T4 excretion rate
+    p[59] = dial[3] # controls T3 secretion rate
+    p[60] = dial[4] # controls T3 excretion rate
+
+    #TODO: setup p[61] = phase
 
     return ic, p
 end
@@ -306,10 +315,10 @@ function thyrosim(dq, q, p, t)
     # Auxillary equations
     q4F = (p[24]+ p[25] * q[1] + p[26] * q[1]^2 + p[27] *q[1]^3) * q[4] #FT3p
     q1F = (p[7] + p[8] * q[1] + p[9] * q[1]^2 + p[10] * q[1]^3) * q[1]  #FT4p
-    SR3 = (p[19] * q[19])                                        #Brain delay (dial 3)
-    SR4 = (p[1] * q[19])                                         #Brain delay (dial 1)
+    SR3 = (p[19] * p[59] * q[19])                                        #Brain delay (dial 3)
+    SR4 = (p[1] * p[57] * q[19])                                         #Brain delay (dial 1)
     fCIRC = q[9]^p[51] / (q[9]^p[51] + p[49]^p[51])
-    SRTSH = (p[30]+p[31]*fCIRC*sin(pi/12*(t+p[60])-p[33]))*(p[50]^p[52]/(p[50]^p[52] + q[9]^p[52]))
+    SRTSH = (p[30]+p[31]*fCIRC*sin(pi/12*(t+p[61])-p[33]))*(p[50]^p[52]/(p[50]^p[52] + q[9]^p[52]))
     fdegTSH = p[34] + p[35] / (p[36] + q[7])
     fLAG = p[41] + 2*q[8]^11 / (p[42]^11 + q[8]^11)
     f4 = p[37]*(1 + 5*(p[53]^p[54]) / (p[53]^p[54]+q[8]^p[54]))
@@ -326,9 +335,9 @@ function thyrosim(dq, q, p, t)
     dq[8]  = f4 / p[38] * q[1] + p[37] / p[39] * q[4] - p[40] * q[8]          #T3B
     dq[9]  = fLAG * (q[8] - q[9])                                             #T3B LAG
     dq[10] = -p[43] * q[10]                                                   #T4PILLdot
-    dq[11] =  p[43] * q[10] - (p[44] + p[11]) * q[11]                         #T4GUTdot
+    dq[11] =  p[43] * q[10] - (p[44] * p[58]+ p[11]) * q[11]                         #T4GUTdot
     dq[12] = -p[45] * q[12]                                                   #T3PILLdot
-    dq[13] =  p[45] * q[12] - (p[46] + p[28]) * q[13]                         #T3GUTdot
+    dq[13] =  p[45] * q[12] - (p[46] * p[60] + p[28]) * q[13]                         #T3GUTdot
 
     # Delay ODEs
     dq[14] = kdelay * (q[7] - q[14]) 
