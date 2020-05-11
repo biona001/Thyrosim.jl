@@ -14,7 +14,7 @@ using Optim
 function objective(
     p_being_optimized::Vector, 
     fitting_index::SharedArray, 
-    blakesley_time::Vector,
+    blakesley_time::Matrix,
     blakesley_my400_data::Matrix, 
     blakesley_my450_data::Matrix, 
     blakesley_my600_data::Matrix,
@@ -70,8 +70,9 @@ function objective(
     TSH_error = blakesley_tsh_error(sol_400, blakesley_time, blakesley_my400_data, p[48]) + 
                 blakesley_tsh_error(sol_450, blakesley_time, blakesley_my450_data, p[48]) + 
                 blakesley_tsh_error(sol_600, blakesley_time, blakesley_my600_data, p[48])
-    blakesley_err = 0.01T4_error + T3_error + TSH_error
+    blakesley_err = 0.01T4_error + 100T3_error + TSH_error
     scaled_blakesley_error = blakesley_err / 297 # divide total error by number of data 198 = T4 and TSH, 297 = T4,T3,TSH 
+    verbose && println("blakesley T4 error = $(0.01T4_error), T3 error = $(100T3_error), TSH error = $TSH_error")
     verbose && println("blakesley error: unscaled = $blakesley_err, scaled = $scaled_blakesley_error")
     total_scale_error += scaled_blakesley_error
     #
@@ -309,8 +310,8 @@ function jonklaas_error(sol, time, data, Vp)
 end
 function fit_all()
     # initialize initial guess and fitting index
-    fitting_index = SharedArray{Int}([12; 29; 28; 45; 30; 31; 49; 50; 51; 52; 53; 54])
-    initial_guess = [0.0189; 0.207; 0.8892067744277633;1.6882221360501146;
+    fitting_index = SharedArray{Int}([19; 46; 12; 29; 28; 45; 30; 31; 49; 50; 51; 52; 53; 54])
+    initial_guess = [3.3572*10^-4; 0.12; 0.0189; 0.207; 0.8892067744277633;1.6882221360501146;
         69.90379778202167;38.71161774205076; 6.039888256864343; 3.7006563259936747;
         8.748185980217668;6.590694001313398;2.896554559451672;13.013203952637502]
 
@@ -323,7 +324,7 @@ function fit_all()
     
     # schneider setup
     train, test, toy = schneider_data();
-    train_data = toy
+    train_data = train
     height = SharedArray{Float64}(convert(Vector{Float64}, train_data[!, Symbol("Ht.m")]))
     weight = SharedArray{Float64}(convert(Vector{Float64}, train_data[!, Symbol("Wt.kg")]))
     sex    = SharedArray{Bool}(convert(Vector{Bool}, train_data[!, Symbol("Sex")]))
@@ -336,13 +337,13 @@ function fit_all()
                                    blakesley_time, my400_data, my450_data, my600_data,
                                    jonklaas_time, patient_t4, patient_t3, patient_tsh, jonklaas_patient_param, jonklaas_patient_dose,
                                    height, weight, sex, tspan, init_tsh, euthy_dose, init_dose, verbose=false), initial_guess, 
-        NelderMead(), Optim.Options(time_limit = 79200, iterations = 10000, g_tol=1e-5))
+        NelderMead(), Optim.Options(time_limit = 82800.0, iterations = 20000, g_tol=1e-5))
 end
 
 function prefit_error()
     # initialize initial guess and fitting index
-    fitting_index = SharedArray{Int}([12; 29; 28; 45; 30; 31; 49; 50; 51; 52; 53; 54])
-    initial_guess = [0.0189; 0.207; 0.8892067744277633;1.6882221360501146;
+    fitting_index = SharedArray{Int}([19; 46; 12; 29; 28; 45; 30; 31; 49; 50; 51; 52; 53; 54])
+    initial_guess = [3.3572*10^-4; 0.12; 0.0189; 0.207; 0.8892067744277633;1.6882221360501146;
         69.90379778202167;38.71161774205076; 6.039888256864343; 3.7006563259936747;
         8.748185980217668;6.590694001313398;2.896554559451672;13.013203952637502]
 
@@ -370,7 +371,7 @@ end
 
 function postfit_error(minimizer)
     # need to know fitting index
-    fitting_index = SharedArray{Int}([12; 29; 28; 45; 30; 31; 49; 50; 51; 52; 53; 54])
+    fitting_index = SharedArray{Int}([19; 46; 12; 29; 28; 45; 30; 31; 49; 50; 51; 52; 53; 54])
 
     # blakesley setup 
     blakesley_time, my400_data, my450_data, my600_data = blakesley_data()
