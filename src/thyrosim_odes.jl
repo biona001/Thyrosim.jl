@@ -153,7 +153,7 @@ function initialize(
     p[25] = 0.00185        #b
     p[26] = 0.00061        #c
     p[27] = -0.000505      #d
-    p[28] = 1.31058        #k3absorb (fitted)
+    p[28] = 0.88 #1.31058        #k3absorb (fitted)
     p[29] = 0.314814       #k05 (fitted)
     p[30] = 62.7056        #Bzero (fitted)
     p[31] = 35.0318        #Azero (fitted)
