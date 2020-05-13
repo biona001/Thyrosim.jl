@@ -125,8 +125,8 @@ function initialize(
     ic[19] = 3.55364471589659
 
     # Parameter values
-    p = zeros(Float64, 60)
-    p[1] = 0.00174155 * dial[1]     #S4
+    p = zeros(Float64, 61)
+    p[1] = 0.00174155      #S4
     p[2] = 8               #tau
     p[3] = 0.868           #k12
     p[4] = 0.108           #k13
@@ -137,14 +137,14 @@ function initialize(
     p[9] = 0.000128        #C
     p[10] = -8.83*10^-6    #D
     p[11] = 0.88           #k4absorb; originally 0.881
-    p[12] = 0.0189         #k02
+    p[12] = 0.0158925      #k02  (fitted)
     p[13] = 0.00998996     #VmaxD1fast
     p[14] = 2.85           #KmD1fast
     p[15] = 6.63*10^-4     #VmaxD1slow
     p[16] = 95             #KmD1slow
     p[17] = 0.00074619     #VmaxD2slow
     p[18] = 0.075          #KmD2slow
-    p[19] = 3.3572*10^-4 * dial[3]   #S3
+    p[19] = 3.3572*10^-4   #S3
     p[20] = 5.37           #k45
     p[21] = 0.0689         #k46
     p[22] = 127            #k64free
@@ -153,14 +153,14 @@ function initialize(
     p[25] = 0.00185        #b
     p[26] = 0.00061        #c
     p[27] = -0.000505      #d
-    p[28] = 0.4978                #k3absorb; fitted to jonklaas
-    p[29] = 0.207          #k05
-    p[30] = 101                   #Bzero; fitted to blakesley
-    p[31] = 47.64                 #Azero; fitted to blakesley
-    p[32] = 0                     #Amax;  should be around 0 because 1976 weeke says hypothyroid patients should have no oscillations.
+    p[28] = 1.31058        #k3absorb (fitted)
+    p[29] = 0.314814       #k05 (fitted)
+    p[30] = 62.7056        #Bzero (fitted)
+    p[31] = 35.0318        #Azero (fitted)
+    p[32] = 0              #Amax;  should be around 0 because 1976 weeke says hypothyroid patients should have no oscillations.
     p[33] = -3.71          #phi
     p[34] = 0.53           #kdegTSH-HYPO
-    p[35] = 0.226                 #VmaxTSH; originally it's 0.037 but this is probably a typo because eq4 of 2010 eigenberg it not a real hill function
+    p[35] = 0.226          #VmaxTSH; originally it's 0.037 but this is probably a typo because eq4 of 2010 eigenberg it not a real hill function
     p[36] = 23             #K50TSH
     p[37] = 0.118          #k3
     p[38] = 0.29           #T4P-EU
@@ -169,19 +169,28 @@ function initialize(
     p[41] = 0.0034         #KLAG-HYPO
     p[42] = 5              #KLAG
     p[43] = 1.3            #k4dissolve
-    p[44] = 0.12 * dial[2] #k4excrete; originally 0.119 (change with dial 2)
-    p[45] = 1.78           #k3dissolve
-    p[46] = 0.12 * dial[4] #k3excrete; originally 0.118 (change with dial 4)
+    p[44] = 0.12           #k4excrete; originally 0.119 (change with dial 2)
+    p[45] = 4.25389        #k3dissolve (fitted)
+    p[46] = 0.12           #k3excrete; originally 0.118 (change with dial 4)
     p[47] = 3.2            #Vp
     p[48] = 5.2            #VTSH
 
     #parameters for hill functions in f_circ and SRtsh
-    p[49] = 4.57           #K_circ -> fitted to Blakesley data (this will be recalculated in the ODE equations
-    p[50] = 3.90           #K_SR_tsh -> fitted to Blakesley data (this will be recalculated in the ODE equations
-    p[51] = 11.0 #6.91     #hill exponent in f_circ
-    p[52] = 5.0  #7.66     #hill exponent in SR_tsh
-    p[53] = 3.5            #Km for f4
-    p[54] = 8.0            #hill exponent for f4
+    p[49] = 0.00878332    #K_circ (fitted)
+    p[50] = 2.73119       #K_SR_tsh (fitted)
+    p[51] = 0.315412      #hill exponent in f_circ (fitted)
+    p[52] = 4.03853       #hill exponent in SR_tsh (fitted)
+    p[53] = 2.39184       #Km for f4 (fitted)
+    p[54] = 1.58918       #hill exponent for f4 (fitted)
+
+    # p[55] = 0.0 # T4 oral dose
+    # p[56] = 0.0 # T3 oral dose
+
+    # dial parameters 
+    p[57] = dial[1] # controls T4 secretion rate
+    p[58] = dial[2] # controls T4 excretion rate
+    p[59] = dial[3] # controls T3 secretion rate
+    p[60] = dial[4] # controls T3 excretion rate
 
     if scale_Vp
         Vp, Vtsh = plasma_volume(height, weight, sex)
@@ -189,7 +198,7 @@ function initialize(
         p[48] = Vtsh
     end
 
-    #TODO: setup p[60] = phase
+    #TODO: setup p[61] = phase
 
     return ic, p
 end
@@ -309,7 +318,7 @@ function thyrosim(dq, q, p, t)
     SR3 = (p[19] * q[19])                                        #Brain delay (dial 3)
     SR4 = (p[1] * q[19])                                         #Brain delay (dial 1)
     fCIRC = q[9]^p[51] / (q[9]^p[51] + p[49]^p[51])
-    SRTSH = (p[30]+p[31]*fCIRC*sin(pi/12*(t+p[60])-p[33]))*(p[50]^p[52]/(p[50]^p[52] + q[9]^p[52]))
+    SRTSH = (p[30]+p[31]*fCIRC*sin(pi/12*(t+p[61])-p[33]))*(p[50]^p[52]/(p[50]^p[52] + q[9]^p[52]))
     fdegTSH = p[34] + p[35] / (p[36] + q[7])
     fLAG = p[41] + 2*q[8]^11 / (p[42]^11 + q[8]^11)
     f4 = p[37]*(1 + 5*(p[53]^p[54]) / (p[53]^p[54]+q[8]^p[54]))
