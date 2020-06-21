@@ -178,10 +178,10 @@ function initialize(
     #parameters for hill functions in f_circ and SRtsh
     p[49] = 4.57           #K_circ -> fitted to Blakesley data (this will be recalculated in the ODE equations
     p[50] = 3.90           #K_SR_tsh -> fitted to Blakesley data (this will be recalculated in the ODE equations
-    p[51] = 11.0 #6.91     #hill exponent in f_circ
-    p[52] = 5.0  #7.66     #hill exponent in SR_tsh
-    p[53] = 3.5            #Km for f4
-    p[54] = 8.0            #hill exponent for f4
+    p[51] = 11.0 #6.91     #n, hill exponent in f_circ
+    p[52] = 5.0  #7.66     #m, hill exponent in SR_tsh
+    p[53] = 3.5            #K_f4 for f4
+    p[54] = 8.0            #l, hill exponent for f4
 
     if scale_Vp
         Vp, Vtsh = plasma_volume(height, weight, sex)
@@ -388,4 +388,29 @@ function set_patient_ic!(ic, p, t4, t3, tsh;
         # Probably not 100% correct since they're supposed to be lagged, but probably better than the default.
         ic[14:19] .= ic[7]
     end
+end
+
+"""
+Find initial conditions from approximate steady state solution. 
+
+This function runs a Thyrosim simulation for 30 days and sets the initial 
+contidion `ic` to the ending values for each compartment.
+"""
+function find_patient_ic!(ic, p, height, weight, sex, dial = [1.0; 0.88; 1.0; 0.88])
+    sol = simulate(height, weight, sex, 30, dial=dial)
+    ic .= sol[end]
+end
+
+function simulate(height, weight, sex, days; dial = [1.0; 0.88; 1.0; 0.88],
+    set_ic = false, T4init = 80.0, T3init = 1.4, TSHinit = 2.0)
+    # set initial conditions
+    ic, p = initialize(dial, true, height, weight, sex) 
+
+    if set_ic
+        set_patient_ic!(ic, p, T4init, T3init, TSHinit, steady_state=true, set_tsh_lag=true)
+    end
+
+    tspan = (0.0, 24.0 * days)
+    prob = ODEProblem(thyrosim, ic, tspan, p)
+    return solve(prob)
 end
