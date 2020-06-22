@@ -125,7 +125,7 @@ function initialize(
     ic[19] = 3.55364471589659
 
     # Parameter values
-    p = zeros(Float64, 61)
+    p = zeros(Float64, 65)
     p[1] = 0.00174155      #S4
     p[2] = 8               #tau
     p[3] = 0.868           #k12
@@ -198,7 +198,13 @@ function initialize(
     p[59] = dial[3] # controls T3 secretion rate
     p[60] = dial[4] # controls T3 excretion rate
 
-    #TODO: setup p[61] = phase
+    # variance parameters for T4/T3/TSH and schneider error (these are used only for parameter estimation!)
+    p[61] = 1.0 # σ for T4
+    p[62] = 1.0 # σ for T3
+    p[63] = 1.0 # σ for TSH
+    p[64] = 1.0 # σ for dosages in Schneider data
+
+    #TODO: setup p[65] = phase
 
     return ic, p
 end
@@ -396,21 +402,9 @@ Find initial conditions from approximate steady state solution.
 This function runs a Thyrosim simulation for 30 days and sets the initial 
 contidion `ic` to the ending values for each compartment.
 """
-function find_patient_ic!(ic, p, height, weight, sex, dial = [1.0; 0.88; 1.0; 0.88])
-    sol = simulate(height, weight, sex, 30, dial=dial)
-    ic .= sol[end]
-end
-
-function simulate(height, weight, sex, days; dial = [1.0; 0.88; 1.0; 0.88],
-    set_ic = false, T4init = 80.0, T3init = 1.4, TSHinit = 2.0)
-    # set initial conditions
-    ic, p = initialize(dial, true, height, weight, sex) 
-
-    if set_ic
-        set_patient_ic!(ic, p, T4init, T3init, TSHinit, steady_state=true, set_tsh_lag=true)
-    end
-
+function find_patient_ic!(ic, p, days)
     tspan = (0.0, 24.0 * days)
     prob = ODEProblem(thyrosim, ic, tspan, p)
-    return solve(prob)
+    sol = solve(prob)
+    ic .= sol[end]
 end
