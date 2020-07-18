@@ -402,9 +402,9 @@ Find initial conditions from approximate steady state solution.
 This function runs a Thyrosim simulation for 30 days and sets the initial 
 contidion `ic` to the ending values for each compartment.
 """
-function find_patient_ic!(ic, p, days)
+function find_patient_ic!(ic, p, days, model = thyrosim)
     tspan = (0.0, 24.0 * days)
-    prob = ODEProblem(thyrosim, ic, tspan, p)
+    prob = ODEProblem(model, ic, tspan, p)
     sol = solve(prob)
     ic .= sol[end]
 end
