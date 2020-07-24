@@ -4,7 +4,6 @@ using DiffEqCallbacks
 using DiffEqParamEstim
 using SharedArrays
 using Optim
-
 function objective(
     p_being_optimized::Vector,
     fitting_index::Vector,
@@ -106,7 +105,7 @@ function objective(
         schneider_errors[id*8] += err
     end
     schneider_err = sum(schneider_errors) / (2 * abs2(p[64]))
-    schneider_err += num_sample * log(2π) / 2 - num_sample * log(p[64])
+    schneider_err += num_sample * log(2π) / 2 + num_sample * log(p[64])
     verbose && println("schneider's negative loglikelihood = $schneider_err")
     total_neg_logl += schneider_err
     #
@@ -138,7 +137,7 @@ function blakesley_t4_neg_logl(sol, time, data, Vp, σ)
             tot_loss += (T4_predicted - data[i, 1])^2
         end
         tot_loss /= 2σ^2
-        tot_loss += n * log(2π) / 2 - n * log(σ)
+        tot_loss += n * log(2π) / 2 + n * log(σ)
     end
     return tot_loss
 end
@@ -153,7 +152,7 @@ function blakesley_t3_neg_logl(sol, time, data, Vp, σ)
             tot_loss += (T3_predicted - data[i, 2])^2
         end
         tot_loss /= 2σ^2
-        tot_loss += n * log(2π) / 2 - n * log(σ)
+        tot_loss += n * log(2π) / 2 + n * log(σ)
     end
     return tot_loss
 end
@@ -168,7 +167,7 @@ function blakesley_tsh_neg_logl(sol, time, data, Vtsh, σ)
             tot_loss += (predicted_tsh - data[i, 3])^2
         end
         tot_loss /= 2σ^2
-        tot_loss += n * log(2π) / 2 - n * log(σ)
+        tot_loss += n * log(2π) / 2 + n * log(σ)
     end
     return tot_loss
 end
@@ -183,7 +182,7 @@ function jonklaas_t3_neg_logl(sol, time, data, Vp, σ)
             tot_loss += (T3_predicted - data[i])^2
         end
         tot_loss /= 2σ^2
-        tot_loss += n * log(2π) / 2 - n * log(σ)
+        tot_loss += n * log(2π) / 2 + n * log(σ)
     end
     return tot_loss
 end
@@ -259,20 +258,29 @@ function TSH_within_interval(sol, Vtsh)
 end
 
 function fit_all()
-    fitting_index = [
-        1; 11;
+    fitting_index =
+        [1; 11;
         13; 14; 15; 16; 17; 18; 19; # T4 -> T3 conversion
         30; 31; 32; 34; 35;
         36; 37; 40; 41; 42; 44;
         49; 50; 51; 52; 53; 54;  # hill function parameters
         61; 62; 63; 64]          # variance parameters
-    initial_guess = [
-        0.00174155; 0.88;
-        0.00998996; 2.85; 6.63*10^-4; 95; 0.00074619; 0.075; 3.3572*10^-4;
-        101; 47.64; 0.0; 0.53; 0.226;
-        23; 0.118; 0.037; 0.0034; 5; 0.12;
-        4.57; 3.90; 11.0; 5.0; 3.5; 8.0;
-        1.0; 1.0; 1.0; 1.0]
+#     initial_guess = [ # original thyrosim params
+#         0.00174155; 0.88;
+#         0.00998996; 2.85; 6.63*10^-4; 95; 0.00074619; 0.075; 3.3572*10^-4;
+#         101; 47.64; 0.0; 0.53; 0.226;
+#         23; 0.118; 0.037; 0.0034; 5; 0.12;
+#         4.57; 3.90; 11.0; 5.0; 3.5; 8.0;
+#         1.0; 1.0; 1.0; 1.0]
+    initial_guess = [ # fitting only blakesley data for 10 min
+        0.0024439893980538322, 0.6924828452382508, 0.015031896170786253,
+        2.7415978997336343, 0.009188193911920965, 64.80990168290326, 0.000321368655604198,
+        0.2507274742984803, 0.00039694208238465586, 34.43918200718575, 51.70708670807703,
+        0.020394251793888346, 0.08975352014589885, 0.14972237808788338, 1.7224671322354967,
+        0.21832447095142993, 0.04716066678183255, 0.015890995278200138, 7.233256412896172,
+        0.2433025630964511, 3.9488987048055013, 4.127457068036263, 0.5951828719058261,
+        5.837298109933334, 2.195326888188319, 15.501926001333658, 3.0035691087386556,
+        0.04822247962959814, 0.20061299978467578, 0.6722448549091067]
 
     # blakesley setup
     blakesley_time, my400_data, my450_data, my600_data = blakesley_data()
@@ -300,20 +308,29 @@ function fit_all()
 end
 
 function prefit_error()
-    fitting_index = [
-        1; 11;
+    fitting_index =
+        [1; 11;
         13; 14; 15; 16; 17; 18; 19; # T4 -> T3 conversion
         30; 31; 32; 34; 35;
         36; 37; 40; 41; 42; 44;
         49; 50; 51; 52; 53; 54;  # hill function parameters
         61; 62; 63; 64]          # variance parameters
-    initial_guess = [
-        0.00174155; 0.88;
-        0.00998996; 2.85; 6.63*10^-4; 95; 0.00074619; 0.075; 3.3572*10^-4;
-        101; 47.64; 0.0; 0.53; 0.226;
-        23; 0.118; 0.037; 0.0034; 5; 0.12;
-        4.57; 3.90; 11.0; 5.0; 3.5; 8.0;
-        1.0; 1.0; 1.0; 1.0]
+#     initial_guess = [ # original thyrosim params
+#         0.00174155; 0.88;
+#         0.00998996; 2.85; 6.63*10^-4; 95; 0.00074619; 0.075; 3.3572*10^-4;
+#         101; 47.64; 0.0; 0.53; 0.226;
+#         23; 0.118; 0.037; 0.0034; 5; 0.12;
+#         4.57; 3.90; 11.0; 5.0; 3.5; 8.0;
+#         1.0; 1.0; 1.0; 1.0]
+    initial_guess = [ # fitting only blakesley data for 10 min
+        0.0024439893980538322, 0.6924828452382508, 0.015031896170786253,
+        2.7415978997336343, 0.009188193911920965, 64.80990168290326, 0.000321368655604198,
+        0.2507274742984803, 0.00039694208238465586, 34.43918200718575, 51.70708670807703,
+        0.020394251793888346, 0.08975352014589885, 0.14972237808788338, 1.7224671322354967,
+        0.21832447095142993, 0.04716066678183255, 0.015890995278200138, 7.233256412896172,
+        0.2433025630964511, 3.9488987048055013, 4.127457068036263, 0.5951828719058261,
+        5.837298109933334, 2.195326888188319, 15.501926001333658, 3.0035691087386556,
+        0.04822247962959814, 0.20061299978467578, 0.6722448549091067]
 
     # blakesley setup
     blakesley_time, my400_data, my450_data, my600_data = blakesley_data()
@@ -339,8 +356,8 @@ end
 
 function postfit_error(minimizer)
     # need to know fitting index
-    fitting_index = [
-        1; 11;
+    fitting_index =
+        [1; 11;
         13; 14; 15; 16; 17; 18; 19; # T4 -> T3 conversion
         30; 31; 32; 34; 35;
         36; 37; 40; 41; 42; 44;
@@ -369,6 +386,7 @@ function postfit_error(minimizer)
               height, weight, sex, tspan, init_tsh, euthy_dose, init_dose, verbose=true)
 end
 
+println("Threads = ", Threads.nthreads())
 println("prefit error: ")
 prefit = prefit_error()
 println("total prefit error = $prefit \n")
