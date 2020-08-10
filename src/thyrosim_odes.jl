@@ -125,7 +125,7 @@ function initialize(
     ic[19] = 3.55364471589659
 
     # Parameter values
-    p = zeros(Float64, 65)
+    p = zeros(Float64, 67)
     p[1] = 0.00174155      #S4
     p[2] = 8               #tau
     p[3] = 0.868           #k12
@@ -183,12 +183,6 @@ function initialize(
     p[53] = 3.5            #K_f4 for f4
     p[54] = 8.0            #l, hill exponent for f4
 
-    if scale_Vp
-        Vp, Vtsh = plasma_volume(height, weight, sex)
-        p[47] = Vp
-        p[48] = Vtsh
-    end
-
     # p[55] = 0.0 # T4 oral dose
     # p[56] = 0.0 # T3 oral dose
 
@@ -204,13 +198,23 @@ function initialize(
     p[63] = 1.0 # σ for TSH
     p[64] = 1.0 # σ for dosages in Schneider data
 
-    #TODO: setup p[65] = phase
+    # reference plasma volumes corresponding to male/female with BMI 22.5
+    p[65] = 2.932691217834299  # male reference Vp
+    p[66] = 2.5137479938183125 # female reference Vp
+
+    if scale_Vp
+        Vp, Vtsh = plasma_volume(height, weight, sex, p[65], p[66])
+        p[47] = Vp
+        p[48] = Vtsh
+    end
+
+    #TODO: setup p[67] = phase
 
     return ic, p
 end
 
 """
-    plasma_volume(height, weight, sex)
+    plasma_volume(height, weight, sex, p)
 
 # Parameters used to get reference plasma volume (Vp) values:
 ## MCL: NEED TO DOUBLE-CHECK HEIGHT/WEIGHT
@@ -227,17 +231,17 @@ end
 + `weight`: measured in KG 
 + `sex`: 1 = male, 0 = female
 
+# Optional inputs
++ `male_ref_vp`: male reference Vp
++ `female_ref_vp`: female reference Vp
+
 # Outputs 
 + `Vp_new`: Scaled plasma volume (liters)
 + `Vtsh_new`: Scaled TSH distribution volume (liters)
 """
-function plasma_volume(h, w, sex::Bool)
+function plasma_volume(h, w, sex::Bool, male_ref_vp=2.933, female_ref_vp=2.514)
     Hem = 0.40 + 0.05 * sex #.45 for male and .4 for females (by default)
     BMI = w / h^2
-
-    # some Vp reference volume. 
-    male_ref_vp   = 2.932691217834299
-    female_ref_vp = 2.5137479938183125
 
     # calculate Ideal Weight fitted to Feldschush's data
     if sex == 1
