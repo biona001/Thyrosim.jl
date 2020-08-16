@@ -143,11 +143,11 @@ end
 
 
 """
-Schneider patients are completely thyroidectomized, but have attained euthyroidism 
-using T4 oral treatments. Normal TSH level = 0.45-4.5 mIU/ml. Here 12.5 μg is the 
-mallest dosing increment.
+Schneider patients are completely thyroidectomized, but have attained 
+euthyroidism using T4 oral treatments. Normal TSH level = 0.45-4.5 mIU/ml. 
+Here 12.5 μg is the smallest dosing increment.
 
-Usable data:
+# Usable data:
 - Starting T4 dose
 - Euthyroid T4 dose
 - Days to euthyroid

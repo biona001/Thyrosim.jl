@@ -196,7 +196,7 @@ function initialize(
     p[61] = 1.0 # σ for T4
     p[62] = 1.0 # σ for T3
     p[63] = 1.0 # σ for TSH
-    p[64] = 1.0 # σ for dosages in Schneider data
+    # p[64] = 1.0 # σ for dosages in Schneider data
 
     # reference plasma volumes corresponding to male/female with BMI 22.5
     p[65] = 2.932691217834299  # male reference Vp
