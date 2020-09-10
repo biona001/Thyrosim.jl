@@ -195,8 +195,8 @@ function initialize(
     # variance parameters for T4/T3/TSH and schneider error (these are used only for parameter estimation!)
     p[61] = 1.0 # σ for T4
     p[62] = 1.0 # σ for T3
-    p[63] = 1.0 # σ for TSH
-    # p[64] = 1.0 # σ for dosages in Schneider data
+    p[63] = 1.0 # σ for TSH in Blakesley data
+    p[64] = 1.0 # σ for TSH in Schneider data
 
     # reference plasma volumes corresponding to male/female with BMI 22.5
     p[65] = 2.932691217834299  # male reference Vp

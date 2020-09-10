@@ -5,13 +5,11 @@ using DiffEqParamEstim
 using SharedArrays
 using Optim
 using Statistics
-
 function objective(
     p_being_optimized::Vector, 
     fitting_index::Vector, 
     lowerbound::Vector,
     upperbound::Vector,
-    categories::Dict,
     blakesley_time::Matrix,
     blakesley_my400_data::Matrix, 
     blakesley_my450_data::Matrix, 
@@ -102,33 +100,31 @@ function objective(
     num_params = length(p_being_optimized)
     num_sample = length(schneider_height)
     num_params == length(fitting_index) || error("check parameter length bro")
-    logl_by_categories = [zeros(6*8) for _ in 1:Threads.nthreads()] # male normal/overwt/obese, then female
+    schneider_logl = 0.0
     Threads.@threads for i in 1:num_sample
-        # get current patient's distribution 
+        # get current patient's parameters
         sex = schneider_sex[i]
         h = schneider_height[i]
         w = schneider_weight[i]
-        μ, σ = get_category(categories, sex, h, w)
+        euthyroid_dose = schneider_euthy_dose[i]
+        initial_dose = schneider_init_dose[i]
+        initial_tsh = schneider_init_tsh[i]
         
+        # only calculate for patients with euthyroid dose ≥ initial dose
+        if euthyroid_dose < initial_dose
+            continue
+        elseif euthyroid_dose == initial_dose
+            μ = initial_tsh # assume patients maintain TSH.preop
+        else # initial dose too low
+            μ = 5.0 # assume patient had TSH value 5.0 
+        end
         #calculate each observations neg likelihood (units in mcg/kg)
-        logobs = schneider_logobs(p_being_optimized, fitting_index, μ, σ, 
-            h, w, sex, schneider_tspan[i], schneider_init_tsh[i], 
-            schneider_euthy_dose[i], schneider_init_dose[i])
-        
-        id = Threads.threadid()
-        update_logl_by_category!(logl_by_categories[id], logobs, sex, h, w)
+        σ = p[64]
+        y = schneider_end_tsh(p_being_optimized, fitting_index, 
+            h, w, sex, schneider_tspan[i], initial_tsh, euthyroid_dose, initial_dose)
+        schneider_logl += log(2π) / 2 + log(σ) + (y - μ)^2 / 2 / σ^2
     end
-    tot_logl_by_categories = sum(logl_by_categories)
-    schneider_logl = sum(tot_logl_by_categories)
-    if verbose 
-        println("schneider's negative loglikelihood = $schneider_logl")
-        println("    male normal     = ", tot_logl_by_categories[8])
-        println("    male overweight = ", tot_logl_by_categories[16])
-        println("    male obese      = ", tot_logl_by_categories[24])
-        println("    female normal     = ", tot_logl_by_categories[32])
-        println("    female overweight = ", tot_logl_by_categories[40])
-        println("    female obese      = ", tot_logl_by_categories[48])
-    end
+    verbose && println("schneider's negative loglikelihood = $schneider_logl")
     total_neg_logl += schneider_logl
     #
     # Return final error
@@ -209,7 +205,7 @@ function jonklaas_t3_neg_logl(sol, time, data, Vp, σ)
     return tot_loss
 end
 # calculates mean passing dose (mcg/kg) and returns negative loglikelihood of this observation
-function schneider_logobs( 
+function schneider_dose_logobs( 
     current_iter::Vector,
     fitting_index::Vector, 
     μ::Float64, # mean of euthyroid dose for a group
@@ -272,6 +268,43 @@ function schneider_logobs(
 
     y = (maxdose + mindose) / 2 / weight
     return log(2π) / 2 + log(σ) + (y - μ)^2 / 2 / σ^2
+end
+function schneider_end_tsh( 
+    current_iter::Vector,
+    fitting_index::Vector,
+    height::Float64, 
+    weight::Float64, 
+    sex::Bool,
+    tspan::Float64,
+    initial_tsh::Float64,
+    euthyroid_dose::Float64,
+    initial_dose::Float64
+    )
+    # quick return
+    euthyroid_dose < initial_dose && return 0.0
+
+    #initialize simulation parameters
+    scale_Vp = true
+    dial  = [0.0; 0.88; 0.0; 0.88]
+    ic, p = initialize(dial, scale_Vp, height, weight, sex)
+    ic[7] = initial_tsh
+    cbk = PeriodicCallback(add_dose!, 24.0)# function to add dose
+
+    # update parameter for fitting 
+    p[fitting_index] .= current_iter
+
+    # run ODE simulation
+    p[55] = initial_dose / 777.0
+    prob  = ODEProblem(thyrosim,ic,(0.0, tspan),p,callback=cbk)
+    sol   = solve(prob, save_idxs=[1, 7])
+
+    # return observed value
+    return sol.u[end][2] * 5.6 / p[48]
+#     return log(2π) / 2 + log(σ) + (y - initial_tsh)^2 / 2 / σ^2
+end
+function schneider_TSH_err(initTSH, sol, Vtsh)
+    tsh = sol.u[end][2] * 5.6 / Vtsh
+    return true
 end
 function TSH_within_interval(sol, Vtsh)
     tot_loss = 0
@@ -376,26 +409,24 @@ function fit_all()
         30; 31; 32; 34; 35;     
         37; 40; 41; 42; 
         49; 50; 51; 52; 53; 54;  # hill function parameters
-        61; 62; 63;              # variance parameters
-        66]                      # female reference Vp
-    # initial_guess = [ # original thyrosim params
-    #     0.00174155; 
-    #     0.00998996; 6.63*10^-4; 0.00074619; 3.3572*10^-4;
-    #     101; 47.64; 0.0; 0.53; 0.226; 
-    #     0.118; 0.037; 0.0034; 5; 
-    #     4.57; 3.90; 11.0; 5.0; 3.5; 8.0;
-    #     1.0; 1.0; 1.0; 
-    #     2.5137]
-    initial_guess = [ #after fitting 24h
-        0.0023492162046331597, 0.015112938102610458, 0.0220059513721207, 
-        0.00030393692427532434, 0.0003794439939511424, 34.17522329125075, 
-        52.048266780803715, 0.04177085881286718, 0.1272285333118378, 
-        0.15237583045798547, 0.21771547250949363, 0.04702635602348462, 
-        0.03715391750986074, 7.285777789184459, 3.7112194422859854, 
-        4.069201730462423, 0.6010144440857, 5.873363376140577, 2.7040412393908153, 
-        9.782254820851314, 3.4320284272461308, 0.1328734399674661, 
-        0.23159077159261604, 2.628077470250549]
-    
+        61; 62; 63; 64]          # variance parameters
+#     initial_guess = [ # original thyrosim params
+#         0.00174155; 
+#         0.00998996; 6.63*10^-4; 0.00074619; 3.3572*10^-4;
+#         101; 47.64; 0.0; 0.53; 0.226; 
+#         0.118; 0.037; 0.0034; 5; 
+#         4.57; 3.90; 11.0; 5.0; 3.5; 8.0;
+#         1.0; 1.0; 1.0]
+    initial_guess = [ # start with good blakesley fit
+        0.0023492162046331597, 
+        0.015112938102610458, 0.013859639854710276, 0.00030393692427532434, 0.0003794439939511424, 
+        34.17522329125075, 49.14968552336458, 0.04177085881286718, 0.08492645933069559, 0.15237583045798547, 
+        0.21771547250949363, 0.04702635602348462, 0.03715391750986074, 7.285777789184459, 
+        3.7112194422859854, 4.069201730462423, 0.6010144440857, 5.873363376140577, 2.7040412393908153, 9.782254820851314, 
+        3.4320284272461308, 0.1328734399674661, 0.23159077159261604, 1.0]
+    lowerbound = zeros(length(initial_guess))
+    upperbound = initial_guess .* 10.0
+
     # blakesley setup 
     blakesley_time, my400_data, my450_data, my600_data = blakesley_data()
     
@@ -405,7 +436,7 @@ function fit_all()
     
     # schneider setup
     train, test, toy = schneider_data();
-    train_data = test
+    train_data = train
     height = convert(Vector{Float64}, train_data[!, Symbol("Ht.m")])
     weight = convert(Vector{Float64}, train_data[!, Symbol("Wt.kg")])
     sex    = convert(Vector{Bool}, train_data[!, Symbol("Sex")]) # 1 is female
@@ -414,46 +445,37 @@ function fit_all()
     euthy_dose = convert(Vector{Float64}, train_data[!, Symbol("LT4.euthyroid.dose")])
     init_dose  = convert(Vector{Float64}, train_data[!, Symbol("LT4.initial.dose")])
     
-    # calculate mean/std for euthyroid dose distribtion (mcg/kg) for different groups
-    bmi = weight ./ height.^2
-    categories = compute_patient_categories(sex, bmi, euthy_dose)
-    lowerbound = zeros(length(initial_guess))
-    upperbound = initial_guess .* 10.0
-
     return optimize(p -> objective(p, fitting_index, lowerbound, upperbound, 
-        categories, blakesley_time, my400_data, my450_data, my600_data, jonklaas_time, 
-        patient_t4, patient_t3, patient_tsh, jonklaas_patient_param, jonklaas_patient_dose,
-        height, weight, sex, tspan, init_tsh, euthy_dose, init_dose, verbose=false), initial_guess, 
-        NelderMead(), Optim.Options(time_limit = 68000.0, iterations = 10000, g_tol=1e-5))
+        blakesley_time, my400_data, my450_data, my600_data, jonklaas_time, patient_t4, 
+        patient_t3, patient_tsh, jonklaas_patient_param, jonklaas_patient_dose,
+        height, weight, sex, tspan, init_tsh, euthy_dose, init_dose, verbose=false), 
+        initial_guess, NelderMead(), 
+        Optim.Options(time_limit = 54000.0, iterations = 10000, g_tol=1e-5))
 end
 
 function prefit_error()
     # fitting all parameters suggested by mauricio
     fitting_index = 
-    [1; 
-    13; 15; 17; 19; # T4 -> T3 conversion
-    30; 31; 32; 34; 35;     
-    37; 40; 41; 42; 
-    49; 50; 51; 52; 53; 54;  # hill function parameters
-    61; 62; 63;              # variance parameters
-    66]                      # female reference Vp
-    # initial_guess = [ # original thyrosim params
-    #     0.00174155; 
-    #     0.00998996; 6.63*10^-4; 0.00074619; 3.3572*10^-4;
-    #     101; 47.64; 0.0; 0.53; 0.226; 
-    #     0.118; 0.037; 0.0034; 5; 
-    #     4.57; 3.90; 11.0; 5.0; 3.5; 8.0;
-    #     1.0; 1.0; 1.0; 
-    #     2.5137]
-    initial_guess = [ #after fitting 24h
-        0.0023492162046331597, 0.015112938102610458, 0.0220059513721207, 
-        0.00030393692427532434, 0.0003794439939511424, 34.17522329125075, 
-        52.048266780803715, 0.04177085881286718, 0.1272285333118378, 
-        0.15237583045798547, 0.21771547250949363, 0.04702635602348462, 
-        0.03715391750986074, 7.285777789184459, 3.7112194422859854, 
-        4.069201730462423, 0.6010144440857, 5.873363376140577, 2.7040412393908153, 
-        9.782254820851314, 3.4320284272461308, 0.1328734399674661, 
-        0.23159077159261604, 2.628077470250549]
+        [1; 
+        13; 15; 17; 19; # T4 -> T3 conversion
+        30; 31; 32; 34; 35;     
+        37; 40; 41; 42; 
+        49; 50; 51; 52; 53; 54;  # hill function parameters
+        61; 62; 63; 64]          # variance parameters
+#     initial_guess = [ # original thyrosim params
+#         0.00174155; 
+#         0.00998996; 6.63*10^-4; 0.00074619; 3.3572*10^-4;
+#         101; 47.64; 0.0; 0.53; 0.226; 
+#         0.118; 0.037; 0.0034; 5; 
+#         4.57; 3.90; 11.0; 5.0; 3.5; 8.0;
+#         1.0; 1.0; 1.0]
+    initial_guess = [ # start with good blakesley fit
+        0.0023492162046331597, 
+        0.015112938102610458, 0.013859639854710276, 0.00030393692427532434, 0.0003794439939511424, 
+        34.17522329125075, 49.14968552336458, 0.04177085881286718, 0.08492645933069559, 0.15237583045798547, 
+        0.21771547250949363, 0.04702635602348462, 0.03715391750986074, 7.285777789184459, 
+        3.7112194422859854, 4.069201730462423, 0.6010144440857, 5.873363376140577, 2.7040412393908153, 9.782254820851314, 
+        3.4320284272461308, 0.1328734399674661, 0.23159077159261604, 1.0]
 
     # blakesley setup
     blakesley_time, my400_data, my450_data, my600_data = blakesley_data()
@@ -462,7 +484,7 @@ function prefit_error()
     jonklaas_patient_param, jonklaas_patient_dose, patient_t4, patient_t3, patient_tsh = jonklaas_data()
     # schneider setup
     train, test, toy = schneider_data();
-    train_data = test
+    train_data = train
     height = convert(Vector{Float64}, train_data[!, Symbol("Ht.m")])
     weight = convert(Vector{Float64}, train_data[!, Symbol("Wt.kg")])
     sex    = convert(Vector{Bool}, train_data[!, Symbol("Sex")])
@@ -470,13 +492,11 @@ function prefit_error()
     init_tsh   = convert(Vector{Float64}, train_data[!, Symbol("TSH.preop")])
     euthy_dose = convert(Vector{Float64}, train_data[!, Symbol("LT4.euthyroid.dose")])
     init_dose  = convert(Vector{Float64}, train_data[!, Symbol("LT4.initial.dose")])
-    bmi = weight ./ height.^2
 
-    categories = compute_patient_categories(sex, bmi, euthy_dose)
     lowerbound = zeros(length(initial_guess))
     upperbound = initial_guess .* 10.0
 
-    return objective(initial_guess, fitting_index, lowerbound, upperbound, categories, 
+    return objective(initial_guess, fitting_index, lowerbound, upperbound, 
         blakesley_time, my400_data, my450_data, my600_data, jonklaas_time, 
         patient_t4, patient_t3, patient_tsh, jonklaas_patient_param, jonklaas_patient_dose,
         height, weight, sex, tspan, init_tsh, euthy_dose, init_dose, verbose=true)
@@ -490,8 +510,7 @@ function postfit_error(minimizer)
         30; 31; 32; 34; 35;     
         37; 40; 41; 42; 
         49; 50; 51; 52; 53; 54;  # hill function parameters
-        61; 62; 63;              # variance parameters
-        66]                      # female reference Vp
+        61; 62; 63; 64]          # variance parameters
 
     # blakesley setup
     blakesley_time, my400_data, my450_data, my600_data = blakesley_data()
@@ -500,7 +519,7 @@ function postfit_error(minimizer)
     jonklaas_patient_param, jonklaas_patient_dose, patient_t4, patient_t3, patient_tsh = jonklaas_data()
     # schneider setup
     train, test, toy = schneider_data();
-    train_data = test
+    train_data = train
     height = convert(Vector{Float64}, train_data[!, Symbol("Ht.m")])
     weight = convert(Vector{Float64}, train_data[!, Symbol("Wt.kg")])
     sex    = convert(Vector{Bool}, train_data[!, Symbol("Sex")])
@@ -508,13 +527,11 @@ function postfit_error(minimizer)
     init_tsh   = convert(Vector{Float64}, train_data[!, Symbol("TSH.preop")])
     euthy_dose = convert(Vector{Float64}, train_data[!, Symbol("LT4.euthyroid.dose")])
     init_dose  = convert(Vector{Float64}, train_data[!, Symbol("LT4.initial.dose")])
-    bmi = weight ./ height.^2
 
-    categories = compute_patient_categories(sex, bmi, euthy_dose)
     lowerbound = zeros(length(fitting_index))
     upperbound = minimizer .* 10.0
 
-    return objective(minimizer, fitting_index, lowerbound, upperbound, categories, 
+    return objective(minimizer, fitting_index, lowerbound, upperbound, 
         blakesley_time, my400_data, my450_data, my600_data, jonklaas_time, 
         patient_t4, patient_t3, patient_tsh, jonklaas_patient_param, jonklaas_patient_dose,
         height, weight, sex, tspan, init_tsh, euthy_dose, init_dose, verbose=true)
