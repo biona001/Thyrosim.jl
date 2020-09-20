@@ -308,3 +308,32 @@ function plot_jonklaas_T3only(sol, T3data::Vector;
 
     plot(p2)
 end
+
+function simulate(
+    h::Float64, # units meters
+    w::Float64, # units kg
+    sex::Bool, # true = male, false = female
+    days::Int=30, 
+    dial=[1.0; 0.88; 1.0; 0.88], 
+    T4dose::Float64=0.0, # mcgs
+    T3dose::Float64=0.0, # mcgs
+    )
+    function daily_dose(u, t, integrator)
+        return t - 24.0
+    end
+    function add_dose!(integrator)
+        integrator.u[10] += integrator.p[55]
+        integrator.u[12] += integrator.p[56]
+    end
+
+    # initialize thyrosim parameters
+    cbk   = ContinuousCallback(daily_dose, add_dose!); 
+    ic, p = initialize(dial, true, h, w, sex)
+    p[55] = T4dose / 777.0 # daily dose
+    p[56] = T3dose / 651.0 # daily dose
+    find_patient_ic!(ic, p, days) 
+    
+    # solve and return ode problem
+    prob = ODEProblem(thyrosim,ic,(0.0, 24days),p,callback=cbk)
+    return solve(prob)
+end
