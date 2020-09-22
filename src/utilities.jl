@@ -312,28 +312,35 @@ end
 function simulate(
     h::Float64, # units meters
     w::Float64, # units kg
-    sex::Bool, # true = male, false = female
+    sex::Bool; # true = male, false = female
     days::Int=30, 
     dial=[1.0; 0.88; 1.0; 0.88], 
     T4dose::Float64=0.0, # mcgs
     T3dose::Float64=0.0, # mcgs
+    dosing_interval::Float64=24.0, #hours
+    fitting_index = Int[],
+    parameters = Float64[],
     )
-    function daily_dose(u, t, integrator)
-        return t - 24.0
-    end
     function add_dose!(integrator)
         integrator.u[10] += integrator.p[55]
         integrator.u[12] += integrator.p[56]
     end
+    cbk = PeriodicCallback(add_dose!, 24.0) 
 
     # initialize thyrosim parameters
-    cbk   = ContinuousCallback(daily_dose, add_dose!); 
-    ic, p = initialize(dial, true, h, w, sex)
+    ic, p = initialize([1.0; 0.88; 1.0; 0.88], true, h, w, sex)
+    p[fitting_index] .= parameters
+
+    # run simulation for 30 days to get approximate steady state conditions
+    # this assumes healthy patient without dose
+    find_patient_ic!(ic, p, 30) 
+
+    # setup daily dosing and fitting parameters 
     p[55] = T4dose / 777.0 # daily dose
     p[56] = T3dose / 651.0 # daily dose
-    find_patient_ic!(ic, p, days) 
+    p[57:60] .= dial #set dial
     
-    # solve and return ode problem
+    # solve and return ode solution
     prob = ODEProblem(thyrosim,ic,(0.0, 24days),p,callback=cbk)
     return solve(prob)
 end

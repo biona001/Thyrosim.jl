@@ -328,7 +328,7 @@ function thyrosim(dq, q, p, t)
     SR3 = (p[19] * p[59] * q[19])                                        #Brain delay (dial 3)
     SR4 = (p[1] * p[57] * q[19])                                         #Brain delay (dial 1)
     fCIRC = q[9]^p[51] / (q[9]^p[51] + p[49]^p[51])
-    SRTSH = (p[30]+p[31]*fCIRC*sin(pi/12*(t+p[61])-p[33]))*(p[50]^p[52]/(p[50]^p[52] + q[9]^p[52]))
+    SRTSH = (p[30]+p[31]*fCIRC*sin(pi/12*t-p[33]))*(p[50]^p[52]/(p[50]^p[52] + q[9]^p[52]))
     fdegTSH = p[34] + p[35] / (p[36] + q[7])
     fLAG = p[41] + 2*q[8]^11 / (p[42]^11 + q[8]^11)
     f4 = p[37]*(1 + 5*(p[53]^p[54]) / (p[53]^p[54]+q[8]^p[54]))
@@ -345,9 +345,9 @@ function thyrosim(dq, q, p, t)
     dq[8]  = f4 / p[38] * q[1] + p[37] / p[39] * q[4] - p[40] * q[8]          #T3B
     dq[9]  = fLAG * (q[8] - q[9])                                             #T3B LAG
     dq[10] = -p[43] * q[10]                                                   #T4PILLdot
-    dq[11] =  p[43] * q[10] - (p[44] * p[58]+ p[11]) * q[11]                         #T4GUTdot
+    dq[11] =  p[43] * q[10] - (p[44] * p[58]+ p[11]) * q[11]                  #T4GUTdot: note p[44] * p[58] = p[44] * dial[2] = k4excrete
     dq[12] = -p[45] * q[12]                                                   #T3PILLdot
-    dq[13] =  p[45] * q[12] - (p[46] * p[60] + p[28]) * q[13]                         #T3GUTdot
+    dq[13] =  p[45] * q[12] - (p[46] * p[60] + p[28]) * q[13]                 #T3GUTdot: note p[46] * p[60] = p[46] * dial[4] = k3excrete
 
     # Delay ODEs
     dq[14] = kdelay * (q[7] - q[14]) 
