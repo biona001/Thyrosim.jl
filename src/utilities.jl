@@ -159,17 +159,12 @@ function schneider_data()
     # data path
     datapath = normpath(Thyrosim.datadir())
 
-    # toy = readdlm("schneider_train_15patients.csv", ',', header=true)
-    # test = readdlm("schneider_test_154patients.csv", ',', header=true)
-    # train = readdlm("schneider_train_400patients.csv", ',', header=true)
+    all_data = CSV.read(datapath * "/schneider/merged_schneider.csv", delim=',')
+    train_idx = findall(!ismissing, all_data[!, Symbol("6 week TSH")])
+    train_data = all_data[train_idx, :]
 
-    toy   = CSV.read(datapath * "/schneider/schneider_train_15patients.csv", delim=',')
-    test  = CSV.read(datapath * "/schneider/schneider_test_154patients.csv", delim=',')
-    train = CSV.read(datapath * "/schneider/schneider_train_400patients.csv", delim=',')
-
-    return train, test, toy
+    return all_data, train_data
 end
-# train, test, toy = schneider_data()
 
 function output_plot(sol; title::AbstractString = "Thyrosim simulation", automargins::Bool=true)
 
