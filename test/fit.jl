@@ -442,7 +442,7 @@ end
 function postfit_error(minimizer)
     # need to know fitting index
     fitting_index = 
-        [1; 
+        [1; 21; 22; 
         30; 31; 
         49; 50; 51; 52; 53; 54;  # hill function parameters
         61; 62; 63;              # variance parameters

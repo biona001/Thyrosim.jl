@@ -154,14 +154,20 @@ Here 12.5 μg is the smallest dosing increment.
 - Number of dose changes 
 - Initial TSH level
 """
-function schneider_data()
-
+function schneider_data(;exclude_missing=true)
     # data path
     datapath = normpath(Thyrosim.datadir())
 
     all_data = CSV.read(datapath * "/schneider/merged_schneider.csv", delim=',')
     train_idx = findall(!ismissing, all_data[!, Symbol("6 week TSH")])
     train_data = all_data[train_idx, :]
+
+    if exclude_missing # only some values of TSH.preop is missing
+        keep_idx_all = findall(x -> x !== missing, all_data[!, Symbol("TSH.preop")])
+        keep_idx_train = findall(x -> x !== missing, train_data[!, Symbol("TSH.preop")])
+        all_data = all_data[keep_idx_all, :]
+        train_data = train_data[keep_idx_train, :]
+    end
 
     return all_data, train_data
 end
