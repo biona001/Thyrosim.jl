@@ -87,6 +87,27 @@ function jonklaas_data()
     return patient_param, patient_dose, patient_t4, patient_t3, patient_tsh
 end
 
+function jonklaas_data_new()
+    datapath = normpath(Thyrosim.datadir())
+    full = CSV.read(datapath * "/jonklaas/jonklass_new_data.csv")
+
+    patient_t4 = convert(Matrix{Float64}, full[:, [6, 10, 14, 18]])
+    patient_t3 = convert(Matrix{Float64}, full[:, [8, 12, 16, 20]])
+    patient_tsh = convert(Matrix{Float64}, full[:, [9, 13, 17, 21]])
+
+    dose_w1 = full[Symbol("1st dose")]
+    dose_w4 = full[Symbol("Final dose")]
+    patient_dose = convert(Matrix{Float64}, [dose_w1 dose_w4])
+
+    weight_w1 = full[Symbol("Wt 1")] # KG
+    weight_w4 = full[Symbol("Wt 4")] # KG
+    height = full[Symbol(" Ht (cm)")] ./ 100 # convert to meters
+    sex = full[:Sex] .== "M" # 1 is male, 0 is female
+    patient_param = convert(Matrix{Float64}, [weight_w1 weight_w4 height sex])
+
+    return patient_param, patient_dose, patient_t4, patient_t3, patient_tsh
+end
+
 # function parse_jonklaas_excel()
 
 #     # data path
