@@ -87,12 +87,22 @@ function jonklaas_data()
     return patient_param, patient_dose, patient_t4, patient_t3, patient_tsh
 end
 
+"""
+New Jonklaas's patient description:
+
+This data contains 4 measurements of FT4, T3 and TSH for 50 patients. These 
+patients were never diagnosed with hyper/hypo-thyroidism, and their first 2 
+TSH measurements were normal. 
+
+The first 2 measurements were 1 week and 1 day before thyroidectomy, and the
+last two measurements were 8 and 16 weeks after surgery. 
+"""
 function jonklaas_data_new()
     datapath = normpath(Thyrosim.datadir())
     full = CSV.read(datapath * "/jonklaas/jonklass_new_data.csv")
 
     patient_t4 = convert(Matrix{Float64}, full[:, [6, 10, 14, 18]])
-    patient_t3 = convert(Matrix{Float64}, full[:, [8, 12, 16, 20]])
+    patient_t3 = convert(Matrix{Float64}, full[:, [8, 12, 16, 20]]) ./ 100
     patient_tsh = convert(Matrix{Float64}, full[:, [9, 13, 17, 21]])
 
     dose_w1 = full[Symbol("1st dose")]
