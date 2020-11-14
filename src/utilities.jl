@@ -95,7 +95,8 @@ patients were never diagnosed with hyper/hypo-thyroidism, and their first 2
 TSH measurements were normal. 
 
 The first 2 measurements were 1 week and 1 day before thyroidectomy, and the
-last two measurements were 8 and 16 weeks after surgery. 
+last two measurements were 8 and 16 weeks after surgery. Patient weight were
+measured on their first and last visit. 
 """
 function jonklaas_data_new()
     datapath = normpath(Thyrosim.datadir())
@@ -341,6 +342,14 @@ function plot_jonklaas_T3only(sol, T3data::Vector;
     plot(p2)
 end
 
+"""
+    simulate(h, w, sex, ...)
+
+Simulate a person of known height, weight, and gender for 30 days (default).
+
+If `warmup = true`, will first run the model for 30 days, assuming healthy
+thyroid function, to get approximate initial condition. 
+"""
 function simulate(
     h::Float64, # units meters
     w::Float64, # units kg
@@ -350,6 +359,7 @@ function simulate(
     T4dose::Float64=0.0, # mcgs
     T3dose::Float64=0.0, # mcgs
     dosing_interval::Float64=24.0, #hours
+    warmup::Bool = true,
     fitting_index = Int[],
     parameters = Float64[],
     )
@@ -357,7 +367,7 @@ function simulate(
         integrator.u[10] += integrator.p[55]
         integrator.u[12] += integrator.p[56]
     end
-    cbk = PeriodicCallback(add_dose!, 24.0) 
+    cbk = PeriodicCallback(add_dose!, dosing_interval) 
 
     # initialize thyrosim parameters
     ic, p = initialize([1.0; 0.88; 1.0; 0.88], true, h, w, sex)
@@ -365,7 +375,7 @@ function simulate(
 
     # run simulation for 30 days to get approximate steady state conditions
     # this assumes healthy patient without dose
-    find_patient_ic!(ic, p, 30) 
+    warmup && find_patient_ic!(ic, p, 30) 
 
     # setup daily dosing and fitting parameters 
     p[55] = T4dose / 777.0 # daily dose
