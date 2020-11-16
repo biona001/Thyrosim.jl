@@ -12,6 +12,7 @@ module Thyrosim
     using CSV
     using DelimitedFiles
     using DifferentialEquations
+    using DataFrames
     
     import Plots:plot, hline!, scatter!
 
