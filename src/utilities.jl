@@ -190,7 +190,8 @@ function schneider_data(;exclude_missing=true)
     # data path
     datapath = normpath(Thyrosim.datadir())
 
-    all_data = CSV.read(datapath * "/schneider/merged_schneider.csv", delim=',')
+    all_data = CSV.read(datapath * "/schneider/merged_schneider.csv", 
+        DataFrame, delim=',')
     train_idx = findall(!ismissing, all_data[!, Symbol("6 week TSH")])
     train_data = all_data[train_idx, :]
 
