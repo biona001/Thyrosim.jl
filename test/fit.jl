@@ -6,6 +6,7 @@ using Optim
 using Statistics
 using LinearAlgebra
 BLAS.set_num_threads(1)
+
 function objective(
     p_being_optimized::Vector, # first n elem is parameters, n+1:end is T4/T3 secrete rates
     fitting_index::Vector, 
@@ -22,6 +23,7 @@ function objective(
     jonklaas_patient_param::Matrix, 
     jonklaas_patient_dose::Matrix,
     jonklaas_exclude_idx::Vector,
+    jonklaas_secrete_rate_clusters::Vector,
     schneider_height::Vector, 
     schneider_weight::Vector, 
     schneider_sex::Vector, 
@@ -127,28 +129,29 @@ function objective(
     #
     # Updated Jonklaas data
     #
-    T4_error = T3_error = TSH_error = 0.0
+    jonklaas_err = T4_error = T3_error = TSH_error = 0.0
     dial = [1.0; 0.88; 1.0; 0.88]
     nparams = length(fitting_index)
     nsamples = size(jonklaas_patient_param, 1)
-    cbk = ContinuousCallback(new_jonklaas_condition, add_dose!)
+    cbk = PeriodicCallback(add_dose!, 24.0) 
     weight_w1 = jonklaas_patient_param[:, 1] # week 1 weight
     height = jonklaas_patient_param[:, 3]
     sex = convert(BitVector, jonklaas_patient_param[:, 4])
     for i in 1:nsamples
         i ∈ jonklaas_exclude_idx && continue
         # run model to steady state before actual simulation
-        dial[1] = p_being_optimized[nparams + 2i - 1]
-        dial[3] = p_being_optimized[nparams + 2i]
+        cluster = jonklaas_secrete_rate_clusters[i]
+        dial[1] = p_being_optimized[nparams + 2cluster - 1]
+        dial[3] = p_being_optimized[nparams + 2cluster]
         sol = simulate(height[i], weight_w1[i], sex[i], days=50, dial=dial, warmup=false, 
             fitting_index=fitting_index, parameters=p_being_optimized[1:length(fitting_index)])
         _, p = initialize(dial, true, height[i], weight_w1[i], sex[i])
         p[fitting_index] .= @view(p_being_optimized[1:length(fitting_index)])
-#         T4_error += jonklaas_T4_neg_logl(sol, jonklaas_patient_t4[i, 2], p[47], p[61])
+        T4_error += jonklaas_T4_neg_logl(sol, jonklaas_patient_t4[i, 2], p[47], p[61])
         T3_error += jonklaas_T3_neg_logl(sol, jonklaas_patient_t3[i, 2], p[47], p[62])
         TSH_error += jonklaas_TSH_neg_logl(sol, jonklaas_patient_tsh[i, 2], p[47], p[63])
         # run first 8 week simulations, interpolate weight weekly
-        weight_diff = (jonklaas_patient_param[i, 4] - jonklaas_patient_param[i, 1]) / 16.0
+        weight_diff = (jonklaas_patient_param[i, 2] - jonklaas_patient_param[i, 1]) / 16.0
         dial[1] = dial[3] = 0.0
         for week in 1:8
             # reset parameters using new weight
@@ -157,28 +160,33 @@ function objective(
             p[fitting_index] .= @view(p_being_optimized[1:length(fitting_index)])
             # use last week's end value
             ic .= sol[end]
+            ic[10] += p[55] # manually add dose for first day of the week
             prob = ODEProblem(thyrosim,ic,(0.0, 168.0),p,callback=cbk)
             sol  = solve(prob)
         end
-#         T4_error += jonklaas_T4_neg_logl(sol, jonklaas_patient_t4[i, 3], p[47], p[61])
+        T4_error += jonklaas_T4_neg_logl(sol, jonklaas_patient_t4[i, 3], p[47], p[61])
         T3_error += jonklaas_T3_neg_logl(sol, jonklaas_patient_t3[i, 3], p[47], p[62])
         TSH_error += jonklaas_TSH_neg_logl(sol, jonklaas_patient_tsh[i, 3], p[47], p[63])
         # run next 8 week, interpolate weight weekly
         for week in 9:16
             # reset parameters using new weight
             ic, p = initialize(dial, true, height[i], weight_w1[i] + week*weight_diff, sex[i])
-            p[55] = jonklaas_patient_dose[i, 1] / 777.0
+            p[55] = jonklaas_patient_dose[i, 2] / 777.0
             p[fitting_index] .= @view(p_being_optimized[1:length(fitting_index)])
             # use last week's end value
             ic .= sol[end]
+            ic[10] += p[55] # manually add dose for first day of the week
             prob = ODEProblem(thyrosim,ic,(0.0, 168.0),p,callback=cbk)
             sol  = solve(prob)
         end
-#         T4_error += jonklaas_T4_neg_logl(sol, jonklaas_patient_t4[i, 3], p[47], p[61])
+        T4_error += jonklaas_T4_neg_logl(sol, jonklaas_patient_t4[i, 3], p[47], p[61])
         T3_error += jonklaas_T3_neg_logl(sol, jonklaas_patient_t3[i, 3], p[47], p[62])
         TSH_error += jonklaas_TSH_neg_logl(sol, jonklaas_patient_tsh[i, 3], p[47], p[63])
     end
-    #
+    verbose && println("jonklaas neg logl: T4 = $T4_error, T3 = $T3_error, TSH = $TSH_error")
+    jonklaas_err = T4_error + T3_error + TSH_error
+    total_neg_logl += jonklaas_err
+    # 
     # Schneider
     #
 #     num_params = length(fitting_index)
@@ -271,6 +279,7 @@ function blakesley_tsh_neg_logl(sol, time, data, Vtsh, σ) # sol includes T4/T3/
     end
     return tot_loss
 end
+FT4_to_TT4(FT4) = (0.000289 + 0.000214*FT4 + 0.000128*FT4 + -8.83*10^-6*FT4) * FT4 * 100000
 # calculate new jonklaas error for T4 at end of sol
 function jonklaas_T4_neg_logl(sol, data, Vp, σ) # sol includes all comparments
     tot_loss = 0.0
@@ -278,7 +287,7 @@ function jonklaas_T4_neg_logl(sol, data, Vp, σ) # sol includes all comparments
         tot_loss = Inf
     else
         predicted = sol[end][1] * 777.0 / Vp
-        tot_loss += (predicted - data)^2 / 2σ^2 + log(2π) / 2 + log(σ)
+        tot_loss += (predicted - FT4_to_TT4(data))^2 / 2σ^2 + log(2π) / 2 + log(σ)
     end
     return tot_loss
 end
@@ -444,7 +453,8 @@ function fit_all()
         5.62485; 4.4451; 7.355; 7.58711; 5.94623; 9.56078;
         5.0155; 1.0; 1.0;
         2.5]
-    initial_guess = [initial_guess; ones(100)] # add T4/T3 secretion for all jonklaas patients
+    initial_guess = [initial_guess; ones(8)] # add T4/T3 secretion for 4 clusters of jonklaas patients
+
     lowerbound = zeros(length(initial_guess))
     upperbound = initial_guess .* 10.0
 
@@ -452,7 +462,9 @@ function fit_all()
     blakesley_time, my400_data, my450_data, my600_data = blakesley_data()
     
     # jonklaas setup
-    jonklaas_exclude_idx = [8, 28, 38]
+    jonklaas_exclude_idx = []
+    jonklaas_secrete_rate_clusters = [3,2,3,1,1,1,1,1,2,2,2,3,2,3,2,1,4,1,2,3,3,3,1,1,3,2,1,3,
+        1,2,3,2,2,2,2,1,2,3,2,1,2,2,3,2,2,2,1,1,1,1]
     jonklaas_patient_param, jonklaas_patient_dose, patient_t4, patient_t3, patient_tsh = jonklaas_data_new()
     jonklaas_time = [0.0; 0.5; 1.0; 2.0; 3.0; 4.0; 5.0; 6.0; 7.0; 8.0]
 #     jonklaas_patient_param, jonklaas_patient_dose, patient_t4, patient_t3, patient_tsh = jonklaas_data()
@@ -471,8 +483,8 @@ function fit_all()
     return optimize(p -> objective(p, fitting_index, lowerbound, upperbound, 
         blakesley_time, my400_data, my450_data, my600_data, jonklaas_time, patient_t4, 
         patient_t3, patient_tsh, jonklaas_patient_param, jonklaas_patient_dose,
-        jonklaas_exclude_idx, height, weight, sex, tspan, init_tsh, euthy_dose, init_dose,
-        postTSH, verbose=false), initial_guess, NelderMead(), 
+        jonklaas_exclude_idx, jonklaas_secrete_rate_clusters, height, weight, sex, tspan, 
+        init_tsh, euthy_dose, init_dose, postTSH, verbose=false), initial_guess, NelderMead(), 
         Optim.Options(time_limit = 70000.0, iterations = 10000, g_tol=1e-5))
 end
 
@@ -496,7 +508,9 @@ function prefit_error()
     # blakesley setup
     blakesley_time, my400_data, my450_data, my600_data = blakesley_data()
     # jonklaas setup
-    jonklaas_exclude_idx = [8, 28, 38]
+    jonklaas_exclude_idx = Int[] #[8, 28, 38]
+    jonklaas_secrete_rate_clusters = [3,2,3,1,1,1,1,1,2,2,2,3,2,3,2,1,4,1,2,3,3,3,1,1,3,2,1,3,
+        1,2,3,2,2,2,2,1,2,3,2,1,2,2,3,2,2,2,1,1,1,1]
     jonklaas_patient_param, jonklaas_patient_dose, patient_t4, patient_t3, patient_tsh = jonklaas_data_new()
     jonklaas_time = [0.0; 0.5; 1.0; 2.0; 3.0; 4.0; 5.0; 6.0; 7.0; 8.0]
 #     jonklaas_patient_param, jonklaas_patient_dose, patient_t4, patient_t3, patient_tsh = jonklaas_data()
@@ -514,8 +528,8 @@ function prefit_error()
     return objective(initial_guess, fitting_index, lowerbound, upperbound, 
         blakesley_time, my400_data, my450_data, my600_data, jonklaas_time, patient_t4, 
         patient_t3, patient_tsh, jonklaas_patient_param, jonklaas_patient_dose,
-        jonklaas_exclude_idx, height, weight, sex, tspan, init_tsh, euthy_dose, init_dose,
-        postTSH, verbose=false)
+        jonklaas_exclude_idx, jonklaas_secrete_rate_clusters, height, weight, sex, 
+        tspan, init_tsh, euthy_dose, init_dose, postTSH, verbose=true)
 end
 
 function postfit_error(minimizer)
@@ -526,11 +540,15 @@ function postfit_error(minimizer)
         49; 50; 51; 52; 53; 54;  # hill function parameters
         61; 62; 63;              # variance parameters
         66]
+    lowerbound = zeros(length(minimizer))
+    upperbound = Inf .* ones(length(minimizer))
 
     # blakesley setup
     blakesley_time, my400_data, my450_data, my600_data = blakesley_data()
     # jonklaas setup
-    jonklaas_exclude_idx = [8, 28, 38]
+    jonklaas_exclude_idx = Int[] #[8, 28, 38]
+    jonklaas_secrete_rate_clusters = [3,2,3,1,1,1,1,1,2,2,2,3,2,3,2,1,4,1,2,3,3,3,1,1,3,2,1,3,
+        1,2,3,2,2,2,2,1,2,3,2,1,2,2,3,2,2,2,1,1,1,1]
     jonklaas_patient_param, jonklaas_patient_dose, patient_t4, patient_t3, patient_tsh = jonklaas_data_new()
     jonklaas_time = [0.0; 0.5; 1.0; 2.0; 3.0; 4.0; 5.0; 6.0; 7.0; 8.0]
 #     jonklaas_patient_param, jonklaas_patient_dose, patient_t4, patient_t3, patient_tsh = jonklaas_data()
@@ -545,14 +563,11 @@ function postfit_error(minimizer)
     init_dose  = convert(Vector{Float64}, train_data[!, Symbol("LT4.initial.dose")])
     postTSH = convert(Vector{Float64}, train_data[!, Symbol("6 week TSH")])
 
-    lowerbound = zeros(length(fitting_index))
-    upperbound = minimizer .* 10.0
-
     return objective(minimizer, fitting_index, lowerbound, upperbound, 
         blakesley_time, my400_data, my450_data, my600_data, jonklaas_time, patient_t4, 
         patient_t3, patient_tsh, jonklaas_patient_param, jonklaas_patient_dose,
-        jonklaas_exclude_idx, height, weight, sex, tspan, init_tsh, euthy_dose, init_dose,
-        postTSH, verbose=false)
+        jonklaas_exclude_idx, jonklaas_secrete_rate_clusters, height, weight, sex,
+        tspan, init_tsh, euthy_dose, init_dose, postTSH, verbose=true)
 end
 
 println("Threads = ", Threads.nthreads())
