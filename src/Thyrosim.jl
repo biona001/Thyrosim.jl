@@ -1,5 +1,3 @@
-__precompile__()
-
 module Thyrosim
 
     export initialize, initialize_original_thyrosim
