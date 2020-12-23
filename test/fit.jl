@@ -138,16 +138,16 @@ function objective(
     height = jonklaas_patient_param[:, 3]
     sex = convert(BitVector, jonklaas_patient_param[:, 4])
     for i in 1:nsamples
-        i ∈ jonklaas_exclude_idx && continue
         # run model to steady state before actual simulation
-        cluster = jonklaas_secrete_rate_clusters[i]
-        dial[1] = p_being_optimized[nparams + 2cluster - 1]
-        dial[3] = p_being_optimized[nparams + 2cluster]
+#         cluster = jonklaas_secrete_rate_clusters[i]
+#         dial[1] = p_being_optimized[nparams + 2cluster - 1]
+#         dial[3] = p_being_optimized[nparams + 2cluster]
+        dial[1] = dial[3] = 1.0
         sol = simulate(height[i], weight_w1[i], sex[i], days=50, dial=dial, warmup=false, 
             fitting_index=fitting_index, parameters=p_being_optimized[1:length(fitting_index)])
         _, p = initialize(dial, true, height[i], weight_w1[i], sex[i])
         p[fitting_index] .= @view(p_being_optimized[1:length(fitting_index)])
-        T4_error += jonklaas_T4_neg_logl(sol, jonklaas_patient_t4[i, 2], p[47], p[61])
+#         T4_error += jonklaas_T4_neg_logl(sol, jonklaas_patient_t4[i, 2], p[47], p[61])
         T3_error += jonklaas_T3_neg_logl(sol, jonklaas_patient_t3[i, 2], p[47], p[62])
         TSH_error += jonklaas_TSH_neg_logl(sol, jonklaas_patient_tsh[i, 2], p[47], p[63])
         # run first 8 week simulations, interpolate weight weekly
@@ -164,7 +164,7 @@ function objective(
             prob = ODEProblem(thyrosim,ic,(0.0, 168.0),p,callback=cbk)
             sol  = solve(prob)
         end
-        T4_error += jonklaas_T4_neg_logl(sol, jonklaas_patient_t4[i, 3], p[47], p[61])
+#         T4_error += jonklaas_T4_neg_logl(sol, jonklaas_patient_t4[i, 3], p[47], p[61])
         T3_error += jonklaas_T3_neg_logl(sol, jonklaas_patient_t3[i, 3], p[47], p[62])
         TSH_error += jonklaas_TSH_neg_logl(sol, jonklaas_patient_tsh[i, 3], p[47], p[63])
         # run next 8 week, interpolate weight weekly
@@ -179,12 +179,12 @@ function objective(
             prob = ODEProblem(thyrosim,ic,(0.0, 168.0),p,callback=cbk)
             sol  = solve(prob)
         end
-        T4_error += jonklaas_T4_neg_logl(sol, jonklaas_patient_t4[i, 3], p[47], p[61])
+#         T4_error += jonklaas_T4_neg_logl(sol, jonklaas_patient_t4[i, 3], p[47], p[61])
         T3_error += jonklaas_T3_neg_logl(sol, jonklaas_patient_t3[i, 3], p[47], p[62])
         TSH_error += jonklaas_TSH_neg_logl(sol, jonklaas_patient_tsh[i, 3], p[47], p[63])
     end
     verbose && println("jonklaas neg logl: T4 = $T4_error, T3 = $T3_error, TSH = $TSH_error")
-    jonklaas_err = T4_error + T3_error + TSH_error
+    jonklaas_err = T3_error + TSH_error
     total_neg_logl += jonklaas_err
     # 
     # Schneider
@@ -279,7 +279,12 @@ function blakesley_tsh_neg_logl(sol, time, data, Vtsh, σ) # sol includes T4/T3/
     end
     return tot_loss
 end
-FT4_to_TT4(FT4) = (0.000289 + 0.000214*FT4 + 0.000128*FT4 + -8.83*10^-6*FT4) * FT4 * 100000
+# μmol (thyrosim unit for FT4) = Vb/100/777 ng/dL (jonklaas unit)
+function FT4_to_TT4(FT4, Vb)
+    # FT4 in ng/dL. Need to convert it to μmol
+    f(TT4) = (0.000289 + 0.000214TT4 + 0.000128*TT4^2 + -8.83*10^-6*TT4^3) * TT4 - FT4 * Vb / 77700
+    return fzero(f, 100)
+end
 # calculate new jonklaas error for T4 at end of sol
 function jonklaas_T4_neg_logl(sol, data, Vp, σ) # sol includes all comparments
     tot_loss = 0.0
@@ -442,18 +447,18 @@ end
 
 function fit_all()
     fitting_index = 
-        [1; 21; 22; 
-        30; 31; 
+        [1; 
+        13; 15; 17; 30; 31; 
         49; 50; 51; 52; 53; 54;  # hill function parameters
         61; 62; 63;              # variance parameters
         66]
     initial_guess = [ # best fit we have so far
-        0.00238826; 0.0689; 127; 
-        83.0787; 52.808; 
+        0.00238826; 
+        0.00998996; 6.63*10^-4; 0.00074619; 83.0787; 52.808; 
         5.62485; 4.4451; 7.355; 7.58711; 5.94623; 9.56078;
         5.0155; 1.0; 1.0;
         2.5]
-    initial_guess = [initial_guess; ones(8)] # add T4/T3 secretion for 4 clusters of jonklaas patients
+#     initial_guess = [initial_guess; ones(8)] # add T4/T3 secretion for 4 clusters of jonklaas patients
 
     lowerbound = zeros(length(initial_guess))
     upperbound = initial_guess .* 10.0
@@ -463,8 +468,7 @@ function fit_all()
     
     # jonklaas setup
     jonklaas_exclude_idx = []
-    jonklaas_secrete_rate_clusters = [3,2,3,1,1,1,1,1,2,2,2,3,2,3,2,1,4,1,2,3,3,3,1,1,3,2,1,3,
-        1,2,3,2,2,2,2,1,2,3,2,1,2,2,3,2,2,2,1,1,1,1]
+    jonklaas_secrete_rate_clusters = [4,2,2,1,3,1,3,1,2,1,2,4,1,2,1,3,1,2,3,1,3,4,4,1,1,3,4,1,1,1,2,1,1]
     jonklaas_patient_param, jonklaas_patient_dose, patient_t4, patient_t3, patient_tsh = jonklaas_data_new()
     jonklaas_time = [0.0; 0.5; 1.0; 2.0; 3.0; 4.0; 5.0; 6.0; 7.0; 8.0]
 #     jonklaas_patient_param, jonklaas_patient_dose, patient_t4, patient_t3, patient_tsh = jonklaas_data()
@@ -485,23 +489,23 @@ function fit_all()
         patient_t3, patient_tsh, jonklaas_patient_param, jonklaas_patient_dose,
         jonklaas_exclude_idx, jonklaas_secrete_rate_clusters, height, weight, sex, tspan, 
         init_tsh, euthy_dose, init_dose, postTSH, verbose=false), initial_guess, NelderMead(), 
-        Optim.Options(time_limit = 70000.0, iterations = 10000, g_tol=1e-5))
+        Optim.Options(time_limit = 72*3600.0, iterations = 10000, g_tol=1e-5))
 end
 
 function prefit_error()
     fitting_index = 
-        [1; 21; 22; 
-        30; 31; 
+        [1; 
+        13; 15; 17; 30; 31; 
         49; 50; 51; 52; 53; 54;  # hill function parameters
         61; 62; 63;              # variance parameters
         66]
     initial_guess = [ # best fit we have so far
-        0.00238826; 0.0689; 127; 
-        83.0787; 52.808; 
+        0.00238826; 
+        0.00998996; 6.63*10^-4; 0.00074619; 83.0787; 52.808; 
         5.62485; 4.4451; 7.355; 7.58711; 5.94623; 9.56078;
         5.0155; 1.0; 1.0;
         2.5]
-    initial_guess = [initial_guess; ones(100)] # add T4/T3 secretion for all jonklaas patients
+    # initial_guess = [initial_guess; ones(100)] # add T4/T3 secretion for all jonklaas patients
     lowerbound = zeros(length(initial_guess))
     upperbound = initial_guess .* 10.0
 
@@ -509,8 +513,7 @@ function prefit_error()
     blakesley_time, my400_data, my450_data, my600_data = blakesley_data()
     # jonklaas setup
     jonklaas_exclude_idx = Int[] #[8, 28, 38]
-    jonklaas_secrete_rate_clusters = [3,2,3,1,1,1,1,1,2,2,2,3,2,3,2,1,4,1,2,3,3,3,1,1,3,2,1,3,
-        1,2,3,2,2,2,2,1,2,3,2,1,2,2,3,2,2,2,1,1,1,1]
+    jonklaas_secrete_rate_clusters = [4,2,2,1,3,1,3,1,2,1,2,4,1,2,1,3,1,2,3,1,3,4,4,1,1,3,4,1,1,1,2,1,1]
     jonklaas_patient_param, jonklaas_patient_dose, patient_t4, patient_t3, patient_tsh = jonklaas_data_new()
     jonklaas_time = [0.0; 0.5; 1.0; 2.0; 3.0; 4.0; 5.0; 6.0; 7.0; 8.0]
 #     jonklaas_patient_param, jonklaas_patient_dose, patient_t4, patient_t3, patient_tsh = jonklaas_data()
@@ -535,8 +538,8 @@ end
 function postfit_error(minimizer)
     # need to know fitting index
     fitting_index = 
-        [1; 21; 22; 
-        30; 31; 
+        [1; 
+        13; 15; 17; 30; 31; 
         49; 50; 51; 52; 53; 54;  # hill function parameters
         61; 62; 63;              # variance parameters
         66]
@@ -547,8 +550,7 @@ function postfit_error(minimizer)
     blakesley_time, my400_data, my450_data, my600_data = blakesley_data()
     # jonklaas setup
     jonklaas_exclude_idx = Int[] #[8, 28, 38]
-    jonklaas_secrete_rate_clusters = [3,2,3,1,1,1,1,1,2,2,2,3,2,3,2,1,4,1,2,3,3,3,1,1,3,2,1,3,
-        1,2,3,2,2,2,2,1,2,3,2,1,2,2,3,2,2,2,1,1,1,1]
+    jonklaas_secrete_rate_clusters = [4,2,2,1,3,1,3,1,2,1,2,4,1,2,1,3,1,2,3,1,3,4,4,1,1,3,4,1,1,1,2,1,1]
     jonklaas_patient_param, jonklaas_patient_dose, patient_t4, patient_t3, patient_tsh = jonklaas_data_new()
     jonklaas_time = [0.0; 0.5; 1.0; 2.0; 3.0; 4.0; 5.0; 6.0; 7.0; 8.0]
 #     jonklaas_patient_param, jonklaas_patient_dose, patient_t4, patient_t3, patient_tsh = jonklaas_data()
@@ -571,9 +573,11 @@ function postfit_error(minimizer)
 end
 
 println("Threads = ", Threads.nthreads())
+flush(stdout)
 println("prefit error: ")
 prefit = prefit_error()
 println("total prefit error = $prefit \n")
+flush(stdout)
 
 result = fit_all()
 

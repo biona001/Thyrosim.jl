@@ -270,6 +270,24 @@ function plasma_volume(h, w, sex::Bool, male_ref_vp=2.933, female_ref_vp=2.514)
     return Vp_new, Vtsh_new
 end
 
+function blood_volume(h, w, sex::Bool)
+    Hem = 0.40 + 0.05 * sex #.45 for male and .4 for females (by default)
+    BMI = w / h^2
+
+    # calculate Ideal Weight fitted to Feldschush's data
+    if sex == 1
+        iw = 176.3 - 220.6 * h + 93.5 * h^2
+    elseif sex == 0
+        iw = 145.8 - 182.7 * h + 79.55 * h^2
+    end
+
+    # power law fitted to Feldchush data
+    a, n = 1.26975706e+03, 3.72981228e-01
+    Δiw = (w - iw) / iw * 100  #deviation from ideal weight, in percentage
+    Vb_per_kg = a * (100.0 + Δiw)^(n - 1)
+    return Vb_per_kg * w / 1000
+end
+
 """
 Original thyrosim ODEs.
 
