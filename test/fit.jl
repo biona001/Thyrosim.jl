@@ -448,13 +448,13 @@ end
 function fit_all()
     fitting_index = 
         [1; 
-        13; 15; 17; 30; 31; 
+        13; 15; 17; 
         49; 50; 51; 52; 53; 54;  # hill function parameters
         61; 62; 63;              # variance parameters
         66]
     initial_guess = [ # best fit we have so far
         0.00238826; 
-        0.00998996; 6.63*10^-4; 0.00074619; 83.0787; 52.808; 
+        0.00998996; 6.63*10^-4; 0.00074619; 
         5.62485; 4.4451; 7.355; 7.58711; 5.94623; 9.56078;
         5.0155; 1.0; 1.0;
         2.5]
@@ -489,19 +489,19 @@ function fit_all()
         patient_t3, patient_tsh, jonklaas_patient_param, jonklaas_patient_dose,
         jonklaas_exclude_idx, jonklaas_secrete_rate_clusters, height, weight, sex, tspan, 
         init_tsh, euthy_dose, init_dose, postTSH, verbose=false), initial_guess, NelderMead(), 
-        Optim.Options(time_limit = 72*3600.0, iterations = 10000, g_tol=1e-5))
+        Optim.Options(time_limit = 24*3600.0, iterations = 10000, g_tol=1e-5))
 end
 
 function prefit_error()
     fitting_index = 
         [1; 
-        13; 15; 17; 30; 31; 
+        13; 15; 17; 
         49; 50; 51; 52; 53; 54;  # hill function parameters
         61; 62; 63;              # variance parameters
         66]
     initial_guess = [ # best fit we have so far
         0.00238826; 
-        0.00998996; 6.63*10^-4; 0.00074619; 83.0787; 52.808; 
+        0.00998996; 6.63*10^-4; 0.00074619; 
         5.62485; 4.4451; 7.355; 7.58711; 5.94623; 9.56078;
         5.0155; 1.0; 1.0;
         2.5]
@@ -539,7 +539,7 @@ function postfit_error(minimizer)
     # need to know fitting index
     fitting_index = 
         [1; 
-        13; 15; 17; 30; 31; 
+        13; 15; 17; 
         49; 50; 51; 52; 53; 54;  # hill function parameters
         61; 62; 63;              # variance parameters
         66]
