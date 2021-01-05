@@ -32,7 +32,8 @@ function objective(
     schneider_euthy_dose::Vector, 
     schneider_init_dose::Vector,
     schneider_postTSH::Vector;      
-    verbose::Bool = false #set to true to display intermediate errors
+    verbose::Bool = false, #set to true to display intermediate errors,
+    blakesley_tsh_penalty::Float64 = 0.0,
     )
     total_neg_logl = 0.0
     # quick return
@@ -66,9 +67,9 @@ function objective(
     T3_error = blakesley_t3_neg_logl(sol_400, blakesley_time, blakesley_my400_data, p[47], p[62]) + 
                blakesley_t3_neg_logl(sol_450, blakesley_time, blakesley_my450_data, p[47], p[62]) + 
                blakesley_t3_neg_logl(sol_600, blakesley_time, blakesley_my600_data, p[47], p[62])
-    TSH_error = blakesley_tsh_neg_logl(sol_400, blakesley_time, blakesley_my400_data, p[48], p[63]) + 
-                blakesley_tsh_neg_logl(sol_450, blakesley_time, blakesley_my450_data, p[48], p[63]) + 
-                blakesley_tsh_neg_logl(sol_600, blakesley_time, blakesley_my600_data, p[48], p[63])
+    TSH_error = blakesley_tsh_neg_logl(sol_400,blakesley_time,blakesley_my400_data,p[48],p[63],blakesley_tsh_penalty) + 
+                blakesley_tsh_neg_logl(sol_450,blakesley_time,blakesley_my450_data,p[48],p[63],blakesley_tsh_penalty) + 
+                blakesley_tsh_neg_logl(sol_600,blakesley_time,blakesley_my600_data,p[48],p[63],blakesley_tsh_penalty)
     blakesley_male_err = T4_error + T3_error + TSH_error
     verbose && println("blakesley male neg logl: T4 = $T4_error, T3 = $T3_error, TSH = $TSH_error")
     total_neg_logl += blakesley_male_err
@@ -97,9 +98,9 @@ function objective(
     T3_error = blakesley_t3_neg_logl(sol_400, blakesley_time, blakesley_my400_data, p[47], p[62]) + 
                blakesley_t3_neg_logl(sol_450, blakesley_time, blakesley_my450_data, p[47], p[62]) + 
                blakesley_t3_neg_logl(sol_600, blakesley_time, blakesley_my600_data, p[47], p[62])
-    TSH_error = blakesley_tsh_neg_logl(sol_400, blakesley_time, blakesley_my400_data, p[48], p[63]) + 
-                blakesley_tsh_neg_logl(sol_450, blakesley_time, blakesley_my450_data, p[48], p[63]) + 
-                blakesley_tsh_neg_logl(sol_600, blakesley_time, blakesley_my600_data, p[48], p[63])
+    TSH_error = blakesley_tsh_neg_logl(sol_400, blakesley_time, blakesley_my400_data, p[48], p[63],blakesley_tsh_penalty) + 
+                blakesley_tsh_neg_logl(sol_450, blakesley_time, blakesley_my450_data, p[48], p[63],blakesley_tsh_penalty) + 
+                blakesley_tsh_neg_logl(sol_600, blakesley_time, blakesley_my600_data, p[48], p[63],blakesley_tsh_penalty)
     blakesley_err = T4_error + T3_error + TSH_error
     verbose && println("blakesley female neg logl: T4 = $T4_error, T3 = $T3_error, TSH = $TSH_error")
     total_neg_logl += blakesley_err
@@ -264,7 +265,7 @@ function blakesley_t3_neg_logl(sol, time, data, Vp, σ) # sol includes T4/T3/TSH
     end
     return tot_loss
 end
-function blakesley_tsh_neg_logl(sol, time, data, Vtsh, σ) # sol includes T4/T3/TSH only
+function blakesley_tsh_neg_logl(sol, time, data, Vtsh, σ, λ = 0.0) # sol includes T4/T3/TSH only
     tot_loss = 0.0
     if any((s.retcode != :Success for s in sol))
         tot_loss = Inf
@@ -276,6 +277,11 @@ function blakesley_tsh_neg_logl(sol, time, data, Vtsh, σ) # sol includes T4/T3/
         end
         tot_loss /= 2σ^2
         tot_loss += n * log(2π) / 2 + n * log(σ)
+        # add penalty for 1st and 2nd peak in TSH data (no penalty if λ=0)           
+        for i in [13, 28]
+            predicted_tsh = sol(time[i])[3] * 5.6 / Vtsh
+            tot_loss += λ * (predicted_tsh - data[i, 3])^2
+        end
     end
     return tot_loss
 end
@@ -448,23 +454,23 @@ end
 function fit_all()
     fitting_index = 
         [1; 
-        13; 15; 17; 
+        13; 15; 17; 30; 31;
         49; 50; 51; 52; 53; 54;  # hill function parameters
         61; 62; 63;              # variance parameters
         66]
     initial_guess = [ # best fit we have so far
         0.00238826; 
-        0.00998996; 6.63*10^-4; 0.00074619; 
+        0.00998996; 6.63*10^-4; 0.00074619; 83.0787; 52.808; 
         5.62485; 4.4451; 7.355; 7.58711; 5.94623; 9.56078;
         5.0155; 1.0; 1.0;
         2.5]
 #     initial_guess = [initial_guess; ones(8)] # add T4/T3 secretion for 4 clusters of jonklaas patients
-
     lowerbound = zeros(length(initial_guess))
     upperbound = initial_guess .* 10.0
 
     # blakesley setup 
     blakesley_time, my400_data, my450_data, my600_data = blakesley_data()
+    blakesley_tsh_penalty = 200.0 # penalize the peak TSH values 
     
     # jonklaas setup
     jonklaas_exclude_idx = []
@@ -488,20 +494,21 @@ function fit_all()
         blakesley_time, my400_data, my450_data, my600_data, jonklaas_time, patient_t4, 
         patient_t3, patient_tsh, jonklaas_patient_param, jonklaas_patient_dose,
         jonklaas_exclude_idx, jonklaas_secrete_rate_clusters, height, weight, sex, tspan, 
-        init_tsh, euthy_dose, init_dose, postTSH, verbose=false), initial_guess, NelderMead(), 
-        Optim.Options(time_limit = 24*3600.0, iterations = 10000, g_tol=1e-5))
+        init_tsh, euthy_dose, init_dose, postTSH, verbose=false, 
+        blakesley_tsh_penalty=blakesley_tsh_penalty), initial_guess, NelderMead(), 
+        Optim.Options(time_limit = 600.0, iterations = 10000, g_tol=1e-5))
 end
 
 function prefit_error()
     fitting_index = 
         [1; 
-        13; 15; 17; 
+        13; 15; 17; 30; 31;
         49; 50; 51; 52; 53; 54;  # hill function parameters
         61; 62; 63;              # variance parameters
         66]
     initial_guess = [ # best fit we have so far
         0.00238826; 
-        0.00998996; 6.63*10^-4; 0.00074619; 
+        0.00998996; 6.63*10^-4; 0.00074619; 101; 47.64;
         5.62485; 4.4451; 7.355; 7.58711; 5.94623; 9.56078;
         5.0155; 1.0; 1.0;
         2.5]
@@ -539,7 +546,7 @@ function postfit_error(minimizer)
     # need to know fitting index
     fitting_index = 
         [1; 
-        13; 15; 17; 
+        13; 15; 17; 30; 31;
         49; 50; 51; 52; 53; 54;  # hill function parameters
         61; 62; 63;              # variance parameters
         66]
