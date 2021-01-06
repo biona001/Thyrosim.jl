@@ -277,8 +277,8 @@ function blakesley_tsh_neg_logl(sol, time, data, Vtsh, σ, λ = 0.0) # sol inclu
         end
         tot_loss /= 2σ^2
         tot_loss += n * log(2π) / 2 + n * log(σ)
-        # add penalty for 1st and 2nd peak in TSH data (no penalty if λ=0)           
-        for i in [13, 28]
+        # add penalty for 1st and 2nd high/low peak in TSH data (no penalty if λ=0)           
+        for i in [9, 13, 24, 28]
             predicted_tsh = sol(time[i])[3] * 5.6 / Vtsh
             tot_loss += λ * (predicted_tsh - data[i, 3])^2
         end
@@ -496,7 +496,7 @@ function fit_all()
         jonklaas_exclude_idx, jonklaas_secrete_rate_clusters, height, weight, sex, tspan, 
         init_tsh, euthy_dose, init_dose, postTSH, verbose=false, 
         blakesley_tsh_penalty=blakesley_tsh_penalty), initial_guess, NelderMead(), 
-        Optim.Options(time_limit = 600.0, iterations = 10000, g_tol=1e-5))
+        Optim.Options(time_limit = 20*3600.0, iterations = 10000, g_tol=1e-5))
 end
 
 function prefit_error()
