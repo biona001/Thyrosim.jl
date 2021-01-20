@@ -125,7 +125,7 @@ function initialize(
     ic[19] = 3.55364471589659
 
     # Parameter values
-    p = zeros(Float64, 67)
+    p = zeros(Float64, 68)
     p[1] = 0.00174155      #S4
     p[2] = 8               #tau
     p[3] = 0.868           #k12
@@ -202,13 +202,15 @@ function initialize(
     p[65] = 2.932691217834299  # male reference Vp
     p[66] = 2.5137479938183125 # female reference Vp
 
+    p[67] = 1.0 # Vtsh scaling factor
+
     if scale_Vp
-        Vp, Vtsh = plasma_volume(height, weight, sex, p[65], p[66])
+        Vp, Vtsh = plasma_volume(height, weight, sex, p[65], p[66], p[67])
         p[47] = Vp
         p[48] = Vtsh
     end
 
-    #TODO: setup p[67] = phase
+    #TODO: setup p[68] = phase
 
     return ic, p
 end
@@ -239,7 +241,8 @@ end
 + `Vp_new`: Scaled plasma volume (liters)
 + `Vtsh_new`: Scaled TSH distribution volume (liters)
 """
-function plasma_volume(h, w, sex::Bool, male_ref_vp=2.933, female_ref_vp=2.514)
+function plasma_volume(h, w, sex::Bool,male_ref_vp=2.933, female_ref_vp=2.514,
+    Vtsh_scale = 1.0)
     Hem = 0.40 + 0.05 * sex #.45 for male and .4 for females (by default)
     BMI = w / h^2
 
@@ -264,8 +267,8 @@ function plasma_volume(h, w, sex::Bool, male_ref_vp=2.933, female_ref_vp=2.514)
         Vp_new = Vp_new * 3.2 / female_ref_vp;   
     end
 
-    # scale Vtsh according to new Vp
-    Vtsh_new = 5.2 + Vp_new - 3.2 # Vtsh_old + (Vp_new - Vp_old) 
+    # scale Vtsh according to Vtsh_new = Vtsh_old + c(Vp_new - Vp_old) 
+    Vtsh_new = 5.2 + Vtsh_scale * (Vp_new - 3.2)
 
     return Vp_new, Vtsh_new
 end
