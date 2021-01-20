@@ -45,65 +45,65 @@ function objective(
     #
     # Blakesley male, 22.5 BMI (1.77m, 70 kg)
     #
-    ic, p = initialize([1.0; 0.88; 1.0; 0.88]) 
-    p[fitting_index] .= @view(p_being_optimized[1:length(fitting_index)])
-    tspan = (0.0, 120.0)
-    cbk   = ContinuousCallback(blakesley_condition, add_dose!); 
-    p_400 = p_450 = p_600 = copy(p)
-    find_patient_ic!(ic, p_400, 30)
-    # solve different ODE problems for varying doses
-    p_400[55] = 400.0 / 777.0
-    p_450[55] = 450.0 / 777.0
-    p_600[55] = 600.0 / 777.0
-    prob_400 = ODEProblem(thyrosim,ic,tspan,p_400,callback=cbk)
-    prob_450 = ODEProblem(thyrosim,ic,tspan,p_450,callback=cbk)
-    prob_600 = ODEProblem(thyrosim,ic,tspan,p_600,callback=cbk)
-    sol_400 = solve(prob_400, save_idxs=[1, 4, 7])
-    sol_450 = solve(prob_450, save_idxs=[1, 4, 7])
-    sol_600 = solve(prob_600, save_idxs=[1, 4, 7])
-    T4_error = blakesley_t4_neg_logl(sol_400, blakesley_time, blakesley_my400_data, p[47], p[61]) + 
-               blakesley_t4_neg_logl(sol_450, blakesley_time, blakesley_my450_data, p[47], p[61]) + 
-               blakesley_t4_neg_logl(sol_600, blakesley_time, blakesley_my600_data, p[47], p[61])
-    T3_error = blakesley_t3_neg_logl(sol_400, blakesley_time, blakesley_my400_data, p[47], p[62]) + 
-               blakesley_t3_neg_logl(sol_450, blakesley_time, blakesley_my450_data, p[47], p[62]) + 
-               blakesley_t3_neg_logl(sol_600, blakesley_time, blakesley_my600_data, p[47], p[62])
-    TSH_error = blakesley_tsh_neg_logl(sol_400,blakesley_time,blakesley_my400_data,p[48],p[63],blakesley_tsh_penalty) + 
-                blakesley_tsh_neg_logl(sol_450,blakesley_time,blakesley_my450_data,p[48],p[63],blakesley_tsh_penalty) + 
-                blakesley_tsh_neg_logl(sol_600,blakesley_time,blakesley_my600_data,p[48],p[63],blakesley_tsh_penalty)
-    blakesley_male_err = T4_error + T3_error + TSH_error
-    verbose && println("blakesley male neg logl: T4 = $T4_error, T3 = $T3_error, TSH = $TSH_error")
-    total_neg_logl += blakesley_male_err
+    # ic, p = initialize([1.0; 0.88; 1.0; 0.88]) 
+    # p[fitting_index] .= @view(p_being_optimized[1:length(fitting_index)])
+    # tspan = (0.0, 120.0)
+    # cbk   = ContinuousCallback(blakesley_condition, add_dose!); 
+    # p_400 = p_450 = p_600 = copy(p)
+    # find_patient_ic!(ic, p_400, 30)
+    # # solve different ODE problems for varying doses
+    # p_400[55] = 400.0 / 777.0
+    # p_450[55] = 450.0 / 777.0
+    # p_600[55] = 600.0 / 777.0
+    # prob_400 = ODEProblem(thyrosim,ic,tspan,p_400,callback=cbk)
+    # prob_450 = ODEProblem(thyrosim,ic,tspan,p_450,callback=cbk)
+    # prob_600 = ODEProblem(thyrosim,ic,tspan,p_600,callback=cbk)
+    # sol_400 = solve(prob_400, save_idxs=[1, 4, 7])
+    # sol_450 = solve(prob_450, save_idxs=[1, 4, 7])
+    # sol_600 = solve(prob_600, save_idxs=[1, 4, 7])
+    # T4_error = blakesley_t4_neg_logl(sol_400, blakesley_time, blakesley_my400_data, p[47], p[61]) + 
+    #            blakesley_t4_neg_logl(sol_450, blakesley_time, blakesley_my450_data, p[47], p[61]) + 
+    #            blakesley_t4_neg_logl(sol_600, blakesley_time, blakesley_my600_data, p[47], p[61])
+    # T3_error = blakesley_t3_neg_logl(sol_400, blakesley_time, blakesley_my400_data, p[47], p[62]) + 
+    #            blakesley_t3_neg_logl(sol_450, blakesley_time, blakesley_my450_data, p[47], p[62]) + 
+    #            blakesley_t3_neg_logl(sol_600, blakesley_time, blakesley_my600_data, p[47], p[62])
+    # TSH_error = blakesley_tsh_neg_logl(sol_400,blakesley_time,blakesley_my400_data,p[48],p[63],blakesley_tsh_penalty) + 
+    #             blakesley_tsh_neg_logl(sol_450,blakesley_time,blakesley_my450_data,p[48],p[63],blakesley_tsh_penalty) + 
+    #             blakesley_tsh_neg_logl(sol_600,blakesley_time,blakesley_my600_data,p[48],p[63],blakesley_tsh_penalty)
+    # blakesley_male_err = T4_error + T3_error + TSH_error
+    # verbose && println("blakesley male neg logl: T4 = $T4_error, T3 = $T3_error, TSH = $TSH_error")
+    # total_neg_logl += blakesley_male_err
     #
     # Blakesley female, 22.5 BMI (1.61m, 58kg)
     #
-    ic, p = initialize([1.0; 0.88; 1.0; 0.88], true, 1.61, 58, false) 
-    p[fitting_index] .= @view(p_being_optimized[1:length(fitting_index)])
-    tspan = (0.0, 120.0)
-    cbk   = ContinuousCallback(blakesley_condition, add_dose!); 
-    p_400 = p_450 = p_600 = copy(p)
-    find_patient_ic!(ic, p_400, 30)
-    # solve different ODE problems for varying doses
-    p_400[55] = 400.0 / 777.0
-    p_450[55] = 450.0 / 777.0
-    p_600[55] = 600.0 / 777.0
-    prob_400 = ODEProblem(thyrosim,ic,tspan,p_400,callback=cbk)
-    prob_450 = ODEProblem(thyrosim,ic,tspan,p_450,callback=cbk)
-    prob_600 = ODEProblem(thyrosim,ic,tspan,p_600,callback=cbk)
-    sol_400 = solve(prob_400, save_idxs=[1, 4, 7])
-    sol_450 = solve(prob_450, save_idxs=[1, 4, 7])
-    sol_600 = solve(prob_600, save_idxs=[1, 4, 7])
-    T4_error = blakesley_t4_neg_logl(sol_400, blakesley_time, blakesley_my400_data, p[47], p[61]) + 
-               blakesley_t4_neg_logl(sol_450, blakesley_time, blakesley_my450_data, p[47], p[61]) + 
-               blakesley_t4_neg_logl(sol_600, blakesley_time, blakesley_my600_data, p[47], p[61])
-    T3_error = blakesley_t3_neg_logl(sol_400, blakesley_time, blakesley_my400_data, p[47], p[62]) + 
-               blakesley_t3_neg_logl(sol_450, blakesley_time, blakesley_my450_data, p[47], p[62]) + 
-               blakesley_t3_neg_logl(sol_600, blakesley_time, blakesley_my600_data, p[47], p[62])
-    TSH_error = blakesley_tsh_neg_logl(sol_400, blakesley_time, blakesley_my400_data, p[48], p[63],blakesley_tsh_penalty) + 
-                blakesley_tsh_neg_logl(sol_450, blakesley_time, blakesley_my450_data, p[48], p[63],blakesley_tsh_penalty) + 
-                blakesley_tsh_neg_logl(sol_600, blakesley_time, blakesley_my600_data, p[48], p[63],blakesley_tsh_penalty)
-    blakesley_err = T4_error + T3_error + TSH_error
-    verbose && println("blakesley female neg logl: T4 = $T4_error, T3 = $T3_error, TSH = $TSH_error")
-    total_neg_logl += blakesley_err
+    # ic, p = initialize([1.0; 0.88; 1.0; 0.88], true, 1.61, 58, false) 
+    # p[fitting_index] .= @view(p_being_optimized[1:length(fitting_index)])
+    # tspan = (0.0, 120.0)
+    # cbk   = ContinuousCallback(blakesley_condition, add_dose!); 
+    # p_400 = p_450 = p_600 = copy(p)
+    # find_patient_ic!(ic, p_400, 30)
+    # # solve different ODE problems for varying doses
+    # p_400[55] = 400.0 / 777.0
+    # p_450[55] = 450.0 / 777.0
+    # p_600[55] = 600.0 / 777.0
+    # prob_400 = ODEProblem(thyrosim,ic,tspan,p_400,callback=cbk)
+    # prob_450 = ODEProblem(thyrosim,ic,tspan,p_450,callback=cbk)
+    # prob_600 = ODEProblem(thyrosim,ic,tspan,p_600,callback=cbk)
+    # sol_400 = solve(prob_400, save_idxs=[1, 4, 7])
+    # sol_450 = solve(prob_450, save_idxs=[1, 4, 7])
+    # sol_600 = solve(prob_600, save_idxs=[1, 4, 7])
+    # T4_error = blakesley_t4_neg_logl(sol_400, blakesley_time, blakesley_my400_data, p[47], p[61]) + 
+    #            blakesley_t4_neg_logl(sol_450, blakesley_time, blakesley_my450_data, p[47], p[61]) + 
+    #            blakesley_t4_neg_logl(sol_600, blakesley_time, blakesley_my600_data, p[47], p[61])
+    # T3_error = blakesley_t3_neg_logl(sol_400, blakesley_time, blakesley_my400_data, p[47], p[62]) + 
+    #            blakesley_t3_neg_logl(sol_450, blakesley_time, blakesley_my450_data, p[47], p[62]) + 
+    #            blakesley_t3_neg_logl(sol_600, blakesley_time, blakesley_my600_data, p[47], p[62])
+    # TSH_error = blakesley_tsh_neg_logl(sol_400, blakesley_time, blakesley_my400_data, p[48], p[63],blakesley_tsh_penalty) + 
+    #             blakesley_tsh_neg_logl(sol_450, blakesley_time, blakesley_my450_data, p[48], p[63],blakesley_tsh_penalty) + 
+    #             blakesley_tsh_neg_logl(sol_600, blakesley_time, blakesley_my600_data, p[48], p[63],blakesley_tsh_penalty)
+    # blakesley_err = T4_error + T3_error + TSH_error
+    # verbose && println("blakesley female neg logl: T4 = $T4_error, T3 = $T3_error, TSH = $TSH_error")
+    # total_neg_logl += blakesley_err
     #
     # Old Jonklaas data
     #
@@ -453,17 +453,11 @@ end
 
 function fit_all()
     fitting_index = 
-        [1; 
-        13; 15; 17; 30; 31;
-        49; 50; 51; 52; 53; 54;  # hill function parameters
-        61; 62; 63;              # variance parameters
-        66]
-    initial_guess = [ # best fit we have so far
-        0.00238826; 
-        0.00998996; 6.63*10^-4; 0.00074619; 83.0787; 52.808; 
-        5.62485; 4.4451; 7.355; 7.58711; 5.94623; 9.56078;
-        5.0155; 1.0; 1.0;
-        2.5]
+        [1;                      # S4
+        30; 31;                  # A0, B0
+        49; 50; 51; 52; 53; 54]  # hill function parameters
+    initial_guess = [0.0021774439032468383, 98.02038931798614, 52.838598734016024, 5.116851502303922,
+        4.446607204780245, 8.162701796793716, 7.654393727494061, 6.546951851624179, 11.43306948962911]
 #     initial_guess = [initial_guess; ones(8)] # add T4/T3 secretion for 4 clusters of jonklaas patients
     lowerbound = zeros(length(initial_guess))
     upperbound = initial_guess .* 10.0
@@ -495,23 +489,17 @@ function fit_all()
         patient_t3, patient_tsh, jonklaas_patient_param, jonklaas_patient_dose,
         jonklaas_exclude_idx, jonklaas_secrete_rate_clusters, height, weight, sex, tspan, 
         init_tsh, euthy_dose, init_dose, postTSH, verbose=false, 
-        blakesley_tsh_penalty=blakesley_tsh_penalty), initial_guess, NelderMead(), 
-        Optim.Options(time_limit = 20*3600.0, iterations = 10000, g_tol=1e-5))
+        blakesley_tsh_penalty=blakesley_tsh_penalty), initial_guess, LBFGS(), 
+        Optim.Options(time_limit = 1*3600.0, iterations = 10000, g_tol=1e-5, show_trace=true))
 end
 
 function prefit_error()
     fitting_index = 
-        [1; 
-        13; 15; 17; 30; 31;
-        49; 50; 51; 52; 53; 54;  # hill function parameters
-        61; 62; 63;              # variance parameters
-        66]
-    initial_guess = [ # best fit we have so far
-        0.00238826; 
-        0.00998996; 6.63*10^-4; 0.00074619; 101; 47.64;
-        5.62485; 4.4451; 7.355; 7.58711; 5.94623; 9.56078;
-        5.0155; 1.0; 1.0;
-        2.5]
+        [1;                      # S4
+        30; 31;                  # A0, B0
+        49; 50; 51; 52; 53; 54]  # hill function parameters
+    initial_guess = [0.0021774439032468383, 98.02038931798614, 52.838598734016024, 5.116851502303922,
+        4.446607204780245, 8.162701796793716, 7.654393727494061, 6.546951851624179, 11.43306948962911]
     # initial_guess = [initial_guess; ones(100)] # add T4/T3 secretion for all jonklaas patients
     lowerbound = zeros(length(initial_guess))
     upperbound = initial_guess .* 10.0
@@ -545,11 +533,9 @@ end
 function postfit_error(minimizer)
     # need to know fitting index
     fitting_index = 
-        [1; 
-        13; 15; 17; 30; 31;
-        49; 50; 51; 52; 53; 54;  # hill function parameters
-        61; 62; 63;              # variance parameters
-        66]
+        [1;                      # S4
+        30; 31;                  # A0, B0
+        49; 50; 51; 52; 53; 54]  # hill function parameters
     lowerbound = zeros(length(minimizer))
     upperbound = Inf .* ones(length(minimizer))
 

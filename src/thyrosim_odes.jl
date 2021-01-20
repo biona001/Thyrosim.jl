@@ -193,9 +193,9 @@ function initialize(
     p[60] = dial[4] # controls T3 excretion rate
 
     # variance parameters for T4/T3/TSH and schneider error (these are used only for parameter estimation!)
-    p[61] = 1.0 # σ for T4
-    p[62] = 1.0 # σ for T3
-    p[63] = 1.0 # σ for TSH in Blakesley data
+    p[61] = 5.003761571969437   # σ for T4
+    p[62] = 0.11122955089297369 # σ for T3
+    p[63] = 1.8027299334358415  # σ for TSH in Blakesley data
     p[64] = 1.0 # σ for TSH in Schneider data
 
     # reference plasma volumes corresponding to male/female with BMI 22.5
