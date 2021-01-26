@@ -45,7 +45,7 @@ function objective(
     #
     # Blakesley male, 22.5 BMI (1.77m, 70 kg)
     #
-    ic, p = initialize([1.0; 0.88; 1.0; 0.88]) 
+    ic, p = initialize([1.0; 0.88; 1.0; 0.88], fitting_index=fitting_index, p_being_optimized=p_being_optimized) 
     p[fitting_index] .= @view(p_being_optimized[1:length(fitting_index)])
     tspan = (0.0, 120.0)
     cbk   = ContinuousCallback(blakesley_condition, add_dose!); 
@@ -76,7 +76,7 @@ function objective(
     #
     # Blakesley female, 22.5 BMI (1.61m, 58kg)
     #
-    ic, p = initialize([1.0; 0.88; 1.0; 0.88], true, 1.61, 58, false) 
+    ic, p = initialize([1.0; 0.88; 1.0; 0.88], true, 1.61, 58, false, fitting_index=fitting_index, p_being_optimized=p_being_optimized) 
     p[fitting_index] .= @view(p_being_optimized[1:length(fitting_index)])
     tspan = (0.0, 120.0)
     cbk   = ContinuousCallback(blakesley_condition, add_dose!); 
@@ -146,17 +146,17 @@ function objective(
         dial[1] = dial[3] = 1.0
         sol = simulate(height[i], weight_w1[i], sex[i], days=50, dial=dial, warmup=false, 
             fitting_index=fitting_index, parameters=p_being_optimized[1:length(fitting_index)])
-        _, p = initialize(dial, true, height[i], weight_w1[i], sex[i])
+        _, p = initialize(dial, true, height[i], weight_w1[i], sex[i], fitting_index=fitting_index, p_being_optimized=p_being_optimized)
         p[fitting_index] .= @view(p_being_optimized[1:length(fitting_index)])
 #         T4_error += jonklaas_T4_neg_logl(sol, jonklaas_patient_t4[i, 2], p[47], p[61])
         T3_error += jonklaas_T3_neg_logl(sol, jonklaas_patient_t3[i, 2], p[47], p[62])
-        TSH_error += jonklaas_TSH_neg_logl(sol, jonklaas_patient_tsh[i, 2], p[47], p[63])
+        TSH_error += 100jonklaas_TSH_neg_logl(sol, jonklaas_patient_tsh[i, 2], p[47], p[63])
         # run first 8 week simulations, interpolate weight weekly
         weight_diff = (jonklaas_patient_param[i, 2] - jonklaas_patient_param[i, 1]) / 16.0
         dial[1] = dial[3] = 0.0
         for week in 1:8
             # reset parameters using new weight
-            ic, p = initialize(dial, true, height[i], weight_w1[i] + week*weight_diff, sex[i])
+            ic, p = initialize(dial, true, height[i], weight_w1[i] + week*weight_diff, sex[i], fitting_index=fitting_index, p_being_optimized=p_being_optimized)
             p[55] = jonklaas_patient_dose[i, 1] / 777.0
             p[fitting_index] .= @view(p_being_optimized[1:length(fitting_index)])
             # use last week's end value
@@ -171,7 +171,7 @@ function objective(
         # run next 8 week, interpolate weight weekly
         for week in 9:16
             # reset parameters using new weight
-            ic, p = initialize(dial, true, height[i], weight_w1[i] + week*weight_diff, sex[i])
+            ic, p = initialize(dial, true, height[i], weight_w1[i] + week*weight_diff, sex[i], fitting_index=fitting_index, p_being_optimized=p_being_optimized)
             p[55] = jonklaas_patient_dose[i, 2] / 777.0
             p[fitting_index] .= @view(p_being_optimized[1:length(fitting_index)])
             # use last week's end value
@@ -217,7 +217,6 @@ function objective(
     #
     return total_neg_logl
 end
-
 # gives 400/450/600 mcg of oral T4 at hour 24
 function blakesley_condition(u, t, integrator)
     return t - 24.0
@@ -491,7 +490,8 @@ function fit_all()
         jonklaas_exclude_idx, jonklaas_secrete_rate_clusters, height, weight, sex, tspan, 
         init_tsh, euthy_dose, init_dose, postTSH, verbose=false, 
         blakesley_tsh_penalty=blakesley_tsh_penalty), initial_guess, LBFGS(), 
-        Optim.Options(time_limit = 72*3600.0, iterations = 10000, g_tol=1e-4, show_trace=true))
+        Optim.Options(time_limit = 40*3600.0, iterations = 10000, g_tol=1e-4,
+        show_trace=true, allow_f_increases=true))
 end
 
 function prefit_error()
@@ -533,12 +533,13 @@ function prefit_error()
 end
 
 function postfit_error(minimizer)
-    # need to know fitting index
     fitting_index = 
         [1;                      # S4
         30; 31;                  # A0, B0
         49; 50; 51; 52; 53; 54;  # hill function parameters
         67]                      # Vtsh scaling factor
+    initial_guess = [0.00214853987041769, 98.0204523303007, 52.83848983498927, 5.118035244405568, 4.434652922412238, 
+        8.162527956215955, 7.658738286572871, 6.55135867079776, 11.432520875360073, 1.0]
     lowerbound = zeros(length(minimizer))
     upperbound = Inf .* ones(length(minimizer))
 

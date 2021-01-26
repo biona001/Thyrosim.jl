@@ -99,7 +99,9 @@ function initialize(
     scale_Vp::Bool = true,
     height=1.77,
     weight=70,
-    sex=true #true = male, false = female
+    sex=true; #true = male, false = female,
+    fitting_index::Vector = Int[],        # needed in fitting
+    p_being_optimized::Vector = Float64[] # needed in fitting
     )
 
     # TODO: need to calculate initial steady state
@@ -202,7 +204,12 @@ function initialize(
     p[65] = 2.932691217834299  # male reference Vp
     p[66] = 2.5137479938183125 # female reference Vp
 
-    p[67] = 1.0 # Vtsh scaling factor
+    # Vtsh scaling factor
+    p[67] = 1.0 
+
+    if length(fitting_index) > 0
+        p[fitting_index] .= p_being_optimized
+    end
 
     if scale_Vp
         Vp, Vtsh = plasma_volume(height, weight, sex, p[65], p[66], p[67])
