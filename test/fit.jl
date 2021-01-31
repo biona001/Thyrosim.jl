@@ -5,7 +5,7 @@ using DiffEqParamEstim
 using Optim
 using Statistics
 using LinearAlgebra
-BLAS.set_num_threads(1)
+# BLAS.set_num_threads(1)
 
 function objective(
     p_being_optimized::Vector, # first n elem is parameters, n+1:end is T4/T3 secrete rates
@@ -150,7 +150,7 @@ function objective(
         p[fitting_index] .= @view(p_being_optimized[1:length(fitting_index)])
 #         T4_error += jonklaas_T4_neg_logl(sol, jonklaas_patient_t4[i, 2], p[47], p[61])
         T3_error += jonklaas_T3_neg_logl(sol, jonklaas_patient_t3[i, 2], p[47], p[62])
-        TSH_error += 100jonklaas_TSH_neg_logl(sol, jonklaas_patient_tsh[i, 2], p[47], p[63])
+        TSH_error += jonklaas_TSH_neg_logl(sol, jonklaas_patient_tsh[i, 2], p[47], p[63])
         # run first 8 week simulations, interpolate weight weekly
         weight_diff = (jonklaas_patient_param[i, 2] - jonklaas_patient_param[i, 1]) / 16.0
         dial[1] = dial[3] = 0.0
@@ -166,7 +166,7 @@ function objective(
             sol  = solve(prob)
         end
 #         T4_error += jonklaas_T4_neg_logl(sol, jonklaas_patient_t4[i, 3], p[47], p[61])
-        T3_error += jonklaas_T3_neg_logl(sol, jonklaas_patient_t3[i, 3], p[47], p[62])
+        T3_error += 10jonklaas_T3_neg_logl(sol, jonklaas_patient_t3[i, 3], p[47], p[62])
         TSH_error += jonklaas_TSH_neg_logl(sol, jonklaas_patient_tsh[i, 3], p[47], p[63])
         # run next 8 week, interpolate weight weekly
         for week in 9:16
@@ -181,7 +181,7 @@ function objective(
             sol  = solve(prob)
         end
 #         T4_error += jonklaas_T4_neg_logl(sol, jonklaas_patient_t4[i, 3], p[47], p[61])
-        T3_error += jonklaas_T3_neg_logl(sol, jonklaas_patient_t3[i, 3], p[47], p[62])
+        T3_error += 10jonklaas_T3_neg_logl(sol, jonklaas_patient_t3[i, 3], p[47], p[62])
         TSH_error += jonklaas_TSH_neg_logl(sol, jonklaas_patient_tsh[i, 3], p[47], p[63])
     end
     verbose && println("jonklaas neg logl: T4 = $T4_error, T3 = $T3_error, TSH = $TSH_error")
@@ -452,12 +452,13 @@ end
 
 function fit_all()
     fitting_index = 
-        [1;                      # S4
+        [1; 13;                  # S4, VtshMax
         30; 31;                  # A0, B0
         49; 50; 51; 52; 53; 54;  # hill function parameters
         67]                      # Vtsh scaling factor
-    initial_guess = [0.00214853987041769, 98.0204523303007, 52.83848983498927, 5.118035244405568, 4.434652922412238, 
-        8.162527956215955, 7.658738286572871, 6.55135867079776, 11.432520875360073, 1.0]
+    initial_guess = [0.00233909723258862, 0.01888250414072272, 70.34130520454524, 
+        37.31550895469677, 4.534828778029588, 4.418055548810554, 9.289765460633825, 
+        7.063722129732839, 6.800716242585794, 15.653958585100927, 1.7481832470648007]
 #     initial_guess = [initial_guess; ones(8)] # add T4/T3 secretion for 4 clusters of jonklaas patients
     lowerbound = zeros(length(initial_guess))
     upperbound = initial_guess .* 10.0
@@ -490,18 +491,19 @@ function fit_all()
         jonklaas_exclude_idx, jonklaas_secrete_rate_clusters, height, weight, sex, tspan, 
         init_tsh, euthy_dose, init_dose, postTSH, verbose=false, 
         blakesley_tsh_penalty=blakesley_tsh_penalty), initial_guess, LBFGS(), 
-        Optim.Options(time_limit = 40*3600.0, iterations = 10000, g_tol=1e-4,
+        Optim.Options(time_limit = 48*3600.0, iterations = 10000, g_tol=1e-4,
         show_trace=true, allow_f_increases=true))
 end
 
 function prefit_error()
     fitting_index = 
-        [1;                      # S4
+        [1; 13;                  # S4, VtshMax
         30; 31;                  # A0, B0
         49; 50; 51; 52; 53; 54;  # hill function parameters
         67]                      # Vtsh scaling factor
-    initial_guess = [0.00214853987041769, 98.0204523303007, 52.83848983498927, 5.118035244405568, 4.434652922412238, 
-        8.162527956215955, 7.658738286572871, 6.55135867079776, 11.432520875360073, 1.0]
+    initial_guess = [0.00233909723258862, 0.01888250414072272, 70.34130520454524, 
+        37.31550895469677, 4.534828778029588, 4.418055548810554, 9.289765460633825, 
+        7.063722129732839, 6.800716242585794, 15.653958585100927, 1.7481832470648007]
     # initial_guess = [initial_guess; ones(100)] # add T4/T3 secretion for all jonklaas patients
     lowerbound = zeros(length(initial_guess))
     upperbound = initial_guess .* 10.0
@@ -534,12 +536,13 @@ end
 
 function postfit_error(minimizer)
     fitting_index = 
-        [1;                      # S4
+        [1; 13;                  # S4, VtshMax
         30; 31;                  # A0, B0
         49; 50; 51; 52; 53; 54;  # hill function parameters
         67]                      # Vtsh scaling factor
-    initial_guess = [0.00214853987041769, 98.0204523303007, 52.83848983498927, 5.118035244405568, 4.434652922412238, 
-        8.162527956215955, 7.658738286572871, 6.55135867079776, 11.432520875360073, 1.0]
+    initial_guess = [0.00233909723258862, 0.01888250414072272, 70.34130520454524, 
+        37.31550895469677, 4.534828778029588, 4.418055548810554, 9.289765460633825, 
+        7.063722129732839, 6.800716242585794, 15.653958585100927, 1.7481832470648007]
     lowerbound = zeros(length(minimizer))
     upperbound = Inf .* ones(length(minimizer))
 
