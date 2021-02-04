@@ -140,7 +140,7 @@ function initialize(
     p[10] = -8.83*10^-6    #D
     p[11] = 0.88           #k4absorb; originally 0.881
     p[12] = 0.0189         #k02
-    p[13] = 0.00998996     #VmaxD1fast
+    p[13] = 0.00998996     #VmaxD1fast 
     p[14] = 2.85           #KmD1fast
     p[15] = 6.63*10^-4     #VmaxD1slow
     p[16] = 95             #KmD1slow
@@ -197,7 +197,7 @@ function initialize(
     # variance parameters for T4/T3/TSH and schneider error (these are used only for parameter estimation!)
     p[61] = 5.003761571969437   # σ for T4
     p[62] = 0.11122955089297369 # σ for T3
-    p[63] = 1.8027299334358415  # σ for TSH in Blakesley data
+    p[63] = 0.4                 # σ for TSH in Blakesley data
     p[64] = 1.0 # σ for TSH in Schneider data
 
     # reference plasma volumes corresponding to male/female with BMI 22.5
