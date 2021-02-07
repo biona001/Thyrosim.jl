@@ -207,17 +207,18 @@ function initialize(
     # Vtsh scaling factor
     p[67] = 1.0 
 
+    # Blakesley reference BMI
+    p[68] = 22.5
+
     if length(fitting_index) > 0
         p[fitting_index] .= p_being_optimized
     end
 
     if scale_Vp
-        Vp, Vtsh = plasma_volume(height, weight, sex, p[65], p[66], p[67])
+        Vp, Vtsh = plasma_volume(height, weight, sex, p[67], p[68])
         p[47] = Vp
         p[48] = Vtsh
     end
-
-    #TODO: setup p[68] = phase
 
     return ic, p
 end
@@ -235,10 +236,13 @@ end
     male_weight   = 70.0
     female_weight = 59.0
 
+The transform equation is `3.2 = Vp_predicted * 3.2 / Vp_ref` where `Vp_ref` is 
+the predicted Vp for the reference male/female patients. 
+
 # Inputs
-+ `height`: measured in meters
-+ `weight`: measured in KG 
-+ `sex`: 1 = male, 0 = female
++ `h`: height measured in meters
++ `w`: weight measured in KG 
++ `sex`: true = male, false = female
 
 # Optional inputs
 + `male_ref_vp`: male reference Vp
@@ -248,10 +252,54 @@ end
 + `Vp_new`: Scaled plasma volume (liters)
 + `Vtsh_new`: Scaled TSH distribution volume (liters)
 """
-function plasma_volume(h, w, sex::Bool,male_ref_vp=2.933, female_ref_vp=2.514,
-    Vtsh_scale = 1.0)
-    Hem = 0.40 + 0.05 * sex #.45 for male and .4 for females (by default)
-    BMI = w / h^2
+function plasma_volume(h, w, sex::Bool,
+    # male_ref_vp=2.933, female_ref_vp=2.514,
+    Vtsh_scale = 1.0, ref_bmi = 22.5
+    )
+    Vp_new = predict_Vp(h, w, sex) * 3.2 / reference_Vp(ref_bmi, sex)
+
+    # scale Vtsh according to Vtsh_new = Vtsh_old + c(Vp_new - Vp_old) 
+    Vtsh_new = 5.2 + Vtsh_scale * (Vp_new - 3.2)
+
+    return Vp_new, Vtsh_new
+end
+
+"""
+    reference_Vp(BMI::Float64, sex::Bool)
+
+Calculates the "reference plasma volume" for Blakesleys patients with specified
+BMI.
+
+Since the predicted plasma volume from Feldschush's data is not 3.2, this
+reference volume is used to scale the predicted volume to 3.2. 
+"""
+function reference_Vp(BMI::Float64, sex::Bool)
+    # calculate weight for specified BMI. Ideal weight (iw) is fitted to Feldschush's data
+    if sex
+        h = 1.77 # avg male height
+        iw = 176.3 - 220.6 * h + 93.5 * h^2
+    else
+        h = 1.63 # avg female height
+        iw = 145.8 - 182.7 * h + 79.55 * h^2
+    end
+    w = BMI * h^2
+
+    return predict_Vp(h, w, sex)
+end
+
+"""
+    predict_Vp(h, w, sex::Bool)
+
+Computes the predicted plasma volume based on data fitted to Feldchush's data
+
+# Inputs
++ `h`: height measured in meters
++ `w`: weight measured in KG 
++ `sex`: true = male, false = female
+"""
+function predict_Vp(h, w, sex::Bool)
+    # hematocrit level, set to .45 for male and .4 for females
+    Hem = 0.40 + 0.05 * sex
 
     # calculate Ideal Weight fitted to Feldschush's data
     if sex == 1
@@ -266,18 +314,7 @@ function plasma_volume(h, w, sex::Bool,male_ref_vp=2.933, female_ref_vp=2.514,
     Vb_per_kg = a * (100.0 + Δiw)^(n - 1)
     Vb = Vb_per_kg * w / 1000
     
-    # calculate new Vp
-    Vp_new = Vb*(1-Hem);       #Vp (orginally 3.2)
-    if sex == 1
-        Vp_new = Vp_new * 3.2 / male_ref_vp;    
-    else
-        Vp_new = Vp_new * 3.2 / female_ref_vp;   
-    end
-
-    # scale Vtsh according to Vtsh_new = Vtsh_old + c(Vp_new - Vp_old) 
-    Vtsh_new = 5.2 + Vtsh_scale * (Vp_new - 3.2)
-
-    return Vp_new, Vtsh_new
+    return Vb * (1 - Hem)
 end
 
 function blood_volume(h, w, sex::Bool)
