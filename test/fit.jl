@@ -43,13 +43,15 @@ function objective(
         end
     end
     #
-    # Blakesley male, 22.5 BMI (1.77m, 70 kg)
+    # Blakesley male patient with BMI = p[68] (assuming height 1.77m)
     #
     ic, p = initialize([1.0; 0.88; 1.0; 0.88], fitting_index=fitting_index, p_being_optimized=p_being_optimized) 
     p[fitting_index] .= @view(p_being_optimized[1:length(fitting_index)])
     tspan = (0.0, 120.0)
     cbk   = ContinuousCallback(blakesley_condition, add_dose!); 
-    p_400 = p_450 = p_600 = copy(p)
+    p_400 = copy(p)
+    p_450 = copy(p)
+    p_600 = copy(p)
     find_patient_ic!(ic, p_400, 30)
     # solve different ODE problems for varying doses
     p_400[55] = 400.0 / 777.0
@@ -74,13 +76,15 @@ function objective(
     verbose && println("blakesley male neg logl: T4 = $T4_error, T3 = $T3_error, TSH = $TSH_error")
     total_neg_logl += blakesley_male_err
     #
-    # Blakesley female, 22.5 BMI (1.61m, 58kg)
+    # Blakesley female with BMI = p[68] (assuming height 1.63m)
     #
     ic, p = initialize([1.0; 0.88; 1.0; 0.88], true, 1.61, 58, false, fitting_index=fitting_index, p_being_optimized=p_being_optimized) 
     p[fitting_index] .= @view(p_being_optimized[1:length(fitting_index)])
     tspan = (0.0, 120.0)
     cbk   = ContinuousCallback(blakesley_condition, add_dose!); 
-    p_400 = p_450 = p_600 = copy(p)
+    p_400 = copy(p)
+    p_450 = copy(p)
+    p_600 = copy(p)
     find_patient_ic!(ic, p_400, 30)
     # solve different ODE problems for varying doses
     p_400[55] = 400.0 / 777.0
@@ -166,7 +170,7 @@ function objective(
             sol  = solve(prob)
         end
 #         T4_error += jonklaas_T4_neg_logl(sol, jonklaas_patient_t4[i, 3], p[47], p[61])
-        T3_error += 10jonklaas_T3_neg_logl(sol, jonklaas_patient_t3[i, 3], p[47], p[62])
+        T3_error += jonklaas_T3_neg_logl(sol, jonklaas_patient_t3[i, 3], p[47], p[62])
         TSH_error += jonklaas_TSH_neg_logl(sol, jonklaas_patient_tsh[i, 3], p[47], p[63])
         # run next 8 week, interpolate weight weekly
         for week in 9:16
@@ -181,7 +185,7 @@ function objective(
             sol  = solve(prob)
         end
 #         T4_error += jonklaas_T4_neg_logl(sol, jonklaas_patient_t4[i, 3], p[47], p[61])
-        T3_error += 10jonklaas_T3_neg_logl(sol, jonklaas_patient_t3[i, 3], p[47], p[62])
+        T3_error += jonklaas_T3_neg_logl(sol, jonklaas_patient_t3[i, 3], p[47], p[62])
         TSH_error += jonklaas_TSH_neg_logl(sol, jonklaas_patient_tsh[i, 3], p[47], p[63])
     end
     verbose && println("jonklaas neg logl: T4 = $T4_error, T3 = $T3_error, TSH = $TSH_error")
@@ -451,14 +455,14 @@ function update_logl_by_category!(logl_by_category::Vector, logl, sex, height, w
 end
 
 function fit_all()
-    fitting_index = 
+    fitting_index =
         [1; 13;                  # S4, VtshMax
         30; 31;                  # A0, B0
         49; 50; 51; 52; 53; 54;  # hill function parameters
-        67]                      # Vtsh scaling factor
+        68]                      # reference BMI
     initial_guess = [0.00233909723258862, 0.01888250414072272, 70.34130520454524, 
         37.31550895469677, 4.534828778029588, 4.418055548810554, 9.289765460633825, 
-        7.063722129732839, 6.800716242585794, 15.653958585100927, 1.7481832470648007]
+        7.063722129732839, 6.800716242585794, 15.653958585100927, 22.5]
 #     initial_guess = [initial_guess; ones(8)] # add T4/T3 secretion for 4 clusters of jonklaas patients
     lowerbound = zeros(length(initial_guess))
     upperbound = initial_guess .* 10.0
@@ -490,20 +494,20 @@ function fit_all()
         patient_t3, patient_tsh, jonklaas_patient_param, jonklaas_patient_dose,
         jonklaas_exclude_idx, jonklaas_secrete_rate_clusters, height, weight, sex, tspan, 
         init_tsh, euthy_dose, init_dose, postTSH, verbose=false, 
-        blakesley_tsh_penalty=blakesley_tsh_penalty), initial_guess, LBFGS(), 
-        Optim.Options(time_limit = 48*3600.0, iterations = 10000, g_tol=1e-4,
+        blakesley_tsh_penalty=blakesley_tsh_penalty), initial_guess, NelderMead(), 
+        Optim.Options(time_limit = 36*3600.0, iterations = 10000, g_tol=1e-4,
         show_trace=true, allow_f_increases=true))
 end
 
 function prefit_error()
-    fitting_index = 
+    fitting_index =
         [1; 13;                  # S4, VtshMax
         30; 31;                  # A0, B0
         49; 50; 51; 52; 53; 54;  # hill function parameters
-        67]                      # Vtsh scaling factor
+        68]                      # reference BMI
     initial_guess = [0.00233909723258862, 0.01888250414072272, 70.34130520454524, 
         37.31550895469677, 4.534828778029588, 4.418055548810554, 9.289765460633825, 
-        7.063722129732839, 6.800716242585794, 15.653958585100927, 1.7481832470648007]
+        7.063722129732839, 6.800716242585794, 15.653958585100927, 22.5]
     # initial_guess = [initial_guess; ones(100)] # add T4/T3 secretion for all jonklaas patients
     lowerbound = zeros(length(initial_guess))
     upperbound = initial_guess .* 10.0
@@ -535,14 +539,14 @@ function prefit_error()
 end
 
 function postfit_error(minimizer)
-    fitting_index = 
+    fitting_index =
         [1; 13;                  # S4, VtshMax
         30; 31;                  # A0, B0
         49; 50; 51; 52; 53; 54;  # hill function parameters
-        67]                      # Vtsh scaling factor
+        68]                      # reference BMI
     initial_guess = [0.00233909723258862, 0.01888250414072272, 70.34130520454524, 
         37.31550895469677, 4.534828778029588, 4.418055548810554, 9.289765460633825, 
-        7.063722129732839, 6.800716242585794, 15.653958585100927, 1.7481832470648007]
+        7.063722129732839, 6.800716242585794, 15.653958585100927, 22.5]
     lowerbound = zeros(length(minimizer))
     upperbound = Inf .* ones(length(minimizer))
 

@@ -236,8 +236,9 @@ end
     male_weight   = 70.0
     female_weight = 59.0
 
-The transform equation is `3.2 = Vp_predicted * 3.2 / Vp_ref` where `Vp_ref` is 
-the predicted Vp for the reference male/female patients. 
+The transform equation is `Vp_new = 3.2 * Vp_predicted / Vp_ref` where `Vp_ref` is 
+the predicted Vp for the reference male/female patients. Thus, a reference
+patient would have Vp_new = 3.2.
 
 # Inputs
 + `h`: height measured in meters
