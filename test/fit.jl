@@ -60,18 +60,18 @@ function objective(
     prob_400 = ODEProblem(thyrosim,ic,tspan,p_400,callback=cbk)
     prob_450 = ODEProblem(thyrosim,ic,tspan,p_450,callback=cbk)
     prob_600 = ODEProblem(thyrosim,ic,tspan,p_600,callback=cbk)
-    sol_400 = solve(prob_400, save_idxs=[1, 4, 7])
-    sol_450 = solve(prob_450, save_idxs=[1, 4, 7])
-    sol_600 = solve(prob_600, save_idxs=[1, 4, 7])
-    T4_error = blakesley_t4_neg_logl(sol_400, blakesley_time, blakesley_my400_data, p[47], p[61]) + 
-               blakesley_t4_neg_logl(sol_450, blakesley_time, blakesley_my450_data, p[47], p[61]) + 
-               blakesley_t4_neg_logl(sol_600, blakesley_time, blakesley_my600_data, p[47], p[61])
-    T3_error = blakesley_t3_neg_logl(sol_400, blakesley_time, blakesley_my400_data, p[47], p[62]) + 
-               blakesley_t3_neg_logl(sol_450, blakesley_time, blakesley_my450_data, p[47], p[62]) + 
-               blakesley_t3_neg_logl(sol_600, blakesley_time, blakesley_my600_data, p[47], p[62])
-    TSH_error = blakesley_tsh_neg_logl(sol_400,blakesley_time,blakesley_my400_data,p[48],p[63],blakesley_tsh_penalty) + 
-                blakesley_tsh_neg_logl(sol_450,blakesley_time,blakesley_my450_data,p[48],p[63],blakesley_tsh_penalty) + 
-                blakesley_tsh_neg_logl(sol_600,blakesley_time,blakesley_my600_data,p[48],p[63],blakesley_tsh_penalty)
+    sol_400 = solve(prob_400, Tsit5(), save_idxs=[1, 4, 7])
+    sol_450 = solve(prob_450, Tsit5(), save_idxs=[1, 4, 7])
+    sol_600 = solve(prob_600, Tsit5(), save_idxs=[1, 4, 7])
+    T4_error = 33blakesley_t4_neg_logl(sol_400, blakesley_time, blakesley_my400_data, p[47], p[61]) + 
+               33blakesley_t4_neg_logl(sol_450, blakesley_time, blakesley_my450_data, p[47], p[61]) + 
+               33blakesley_t4_neg_logl(sol_600, blakesley_time, blakesley_my600_data, p[47], p[61])
+    T3_error = 33blakesley_t3_neg_logl(sol_400, blakesley_time, blakesley_my400_data, p[47], p[62]) + 
+               33blakesley_t3_neg_logl(sol_450, blakesley_time, blakesley_my450_data, p[47], p[62]) + 
+               33blakesley_t3_neg_logl(sol_600, blakesley_time, blakesley_my600_data, p[47], p[62])
+    TSH_error = 33blakesley_tsh_neg_logl(sol_400,blakesley_time,blakesley_my400_data,p[48],p[63],blakesley_tsh_penalty) + 
+                33blakesley_tsh_neg_logl(sol_450,blakesley_time,blakesley_my450_data,p[48],p[63],blakesley_tsh_penalty) + 
+                33blakesley_tsh_neg_logl(sol_600,blakesley_time,blakesley_my600_data,p[48],p[63],blakesley_tsh_penalty)
     blakesley_male_err = T4_error + T3_error + TSH_error
     verbose && println("blakesley male neg logl: T4 = $T4_error, T3 = $T3_error, TSH = $TSH_error")
     total_neg_logl += blakesley_male_err
@@ -93,18 +93,18 @@ function objective(
     prob_400 = ODEProblem(thyrosim,ic,tspan,p_400,callback=cbk)
     prob_450 = ODEProblem(thyrosim,ic,tspan,p_450,callback=cbk)
     prob_600 = ODEProblem(thyrosim,ic,tspan,p_600,callback=cbk)
-    sol_400 = solve(prob_400, save_idxs=[1, 4, 7])
-    sol_450 = solve(prob_450, save_idxs=[1, 4, 7])
-    sol_600 = solve(prob_600, save_idxs=[1, 4, 7])
-    T4_error = blakesley_t4_neg_logl(sol_400, blakesley_time, blakesley_my400_data, p[47], p[61]) + 
-               blakesley_t4_neg_logl(sol_450, blakesley_time, blakesley_my450_data, p[47], p[61]) + 
-               blakesley_t4_neg_logl(sol_600, blakesley_time, blakesley_my600_data, p[47], p[61])
-    T3_error = blakesley_t3_neg_logl(sol_400, blakesley_time, blakesley_my400_data, p[47], p[62]) + 
-               blakesley_t3_neg_logl(sol_450, blakesley_time, blakesley_my450_data, p[47], p[62]) + 
-               blakesley_t3_neg_logl(sol_600, blakesley_time, blakesley_my600_data, p[47], p[62])
-    TSH_error = blakesley_tsh_neg_logl(sol_400, blakesley_time, blakesley_my400_data, p[48], p[63],blakesley_tsh_penalty) + 
-                blakesley_tsh_neg_logl(sol_450, blakesley_time, blakesley_my450_data, p[48], p[63],blakesley_tsh_penalty) + 
-                blakesley_tsh_neg_logl(sol_600, blakesley_time, blakesley_my600_data, p[48], p[63],blakesley_tsh_penalty)
+    sol_400 = solve(prob_400, Tsit5(), save_idxs=[1, 4, 7])
+    sol_450 = solve(prob_450, Tsit5(), save_idxs=[1, 4, 7])
+    sol_600 = solve(prob_600, Tsit5(), save_idxs=[1, 4, 7])
+    T4_error = 33blakesley_t4_neg_logl(sol_400, blakesley_time, blakesley_my400_data, p[47], p[61]) + 
+               33blakesley_t4_neg_logl(sol_450, blakesley_time, blakesley_my450_data, p[47], p[61]) + 
+               33blakesley_t4_neg_logl(sol_600, blakesley_time, blakesley_my600_data, p[47], p[61])
+    T3_error = 33blakesley_t3_neg_logl(sol_400, blakesley_time, blakesley_my400_data, p[47], p[62]) + 
+               33blakesley_t3_neg_logl(sol_450, blakesley_time, blakesley_my450_data, p[47], p[62]) + 
+               33blakesley_t3_neg_logl(sol_600, blakesley_time, blakesley_my600_data, p[47], p[62])
+    TSH_error = 33blakesley_tsh_neg_logl(sol_400, blakesley_time, blakesley_my400_data, p[48], p[63],blakesley_tsh_penalty) + 
+                33blakesley_tsh_neg_logl(sol_450, blakesley_time, blakesley_my450_data, p[48], p[63],blakesley_tsh_penalty) + 
+                33blakesley_tsh_neg_logl(sol_600, blakesley_time, blakesley_my600_data, p[48], p[63],blakesley_tsh_penalty)
     blakesley_err = T4_error + T3_error + TSH_error
     verbose && println("blakesley female neg logl: T4 = $T4_error, T3 = $T3_error, TSH = $TSH_error")
     total_neg_logl += blakesley_err
@@ -125,7 +125,7 @@ function objective(
 #         # solve different ODE problems for varying doses
 #         p[56] = jonklaas_patient_dose[i] / 651.0
 #         prob = ODEProblem(thyrosim,ic,tspan,p,callback=cbk)
-#         sol  = solve(prob, save_idxs=4)
+#         sol  = solve(prob, Tsit5(), save_idxs=4)
 #         jonklaas_err += jonklaas_t3_neg_logl(sol, jonklaas_time, 
 #             jonklaas_patient_t3[i, :], p[47], p[62])
 #     end
@@ -153,7 +153,7 @@ function objective(
         _, p = initialize(dial, true, height[i], weight_w1[i], sex[i], fitting_index=fitting_index, p_being_optimized=p_being_optimized)
         p[fitting_index] .= @view(p_being_optimized[1:length(fitting_index)])
 #         T4_error += jonklaas_T4_neg_logl(sol, jonklaas_patient_t4[i, 2], p[47], p[61])
-        T3_error += jonklaas_T3_neg_logl(sol, jonklaas_patient_t3[i, 2], p[47], p[62])
+        T3_error += 10*5*jonklaas_T3_neg_logl(sol, jonklaas_patient_t3[i, 2], p[47], p[62])
         TSH_error += jonklaas_TSH_neg_logl(sol, jonklaas_patient_tsh[i, 2], p[47], p[63])
         # run first 8 week simulations, interpolate weight weekly
         weight_diff = (jonklaas_patient_param[i, 2] - jonklaas_patient_param[i, 1]) / 16.0
@@ -167,10 +167,10 @@ function objective(
             ic .= sol[end]
             ic[10] += p[55] # manually add dose for first day of the week
             prob = ODEProblem(thyrosim,ic,(0.0, 168.0),p,callback=cbk)
-            sol  = solve(prob)
+            sol  = solve(prob, Tsit5())
         end
 #         T4_error += jonklaas_T4_neg_logl(sol, jonklaas_patient_t4[i, 3], p[47], p[61])
-        T3_error += jonklaas_T3_neg_logl(sol, jonklaas_patient_t3[i, 3], p[47], p[62])
+        T3_error += 100jonklaas_T3_neg_logl(sol, jonklaas_patient_t3[i, 3], p[47], p[62])
         TSH_error += jonklaas_TSH_neg_logl(sol, jonklaas_patient_tsh[i, 3], p[47], p[63])
         # run next 8 week, interpolate weight weekly
         for week in 9:16
@@ -182,10 +182,10 @@ function objective(
             ic .= sol[end]
             ic[10] += p[55] # manually add dose for first day of the week
             prob = ODEProblem(thyrosim,ic,(0.0, 168.0),p,callback=cbk)
-            sol  = solve(prob)
+            sol  = solve(prob, Tsit5())
         end
 #         T4_error += jonklaas_T4_neg_logl(sol, jonklaas_patient_t4[i, 3], p[47], p[61])
-        T3_error += jonklaas_T3_neg_logl(sol, jonklaas_patient_t3[i, 3], p[47], p[62])
+        T3_error += 100jonklaas_T3_neg_logl(sol, jonklaas_patient_t3[i, 3], p[47], p[62])
         TSH_error += jonklaas_TSH_neg_logl(sol, jonklaas_patient_tsh[i, 3], p[47], p[63])
     end
     verbose && println("jonklaas neg logl: T4 = $T4_error, T3 = $T3_error, TSH = $TSH_error")
@@ -350,7 +350,7 @@ function schneider_end_tsh(
     # run ODE simulation
     p[55] = initial_dose / 777.0
     prob  = ODEProblem(thyrosim,ic,(0.0, 1008),p,callback=cbk) # simulate for 6 weeks
-    sol   = solve(prob, save_idxs=[1, 7])
+    sol   = solve(prob, Tsit5(), save_idxs=[1, 7])
 
     # return observed value
     return sol.u[end][2] * 5.6 / p[48]
@@ -495,7 +495,7 @@ function fit_all()
         jonklaas_exclude_idx, jonklaas_secrete_rate_clusters, height, weight, sex, tspan, 
         init_tsh, euthy_dose, init_dose, postTSH, verbose=false, 
         blakesley_tsh_penalty=blakesley_tsh_penalty), initial_guess, NelderMead(), 
-        Optim.Options(time_limit = 36*3600.0, iterations = 10000, g_tol=1e-4,
+        Optim.Options(time_limit = 20*3600.0, iterations = 10000, g_tol=1e-4,
         show_trace=true, allow_f_increases=true))
 end
 
