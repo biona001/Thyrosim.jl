@@ -45,8 +45,10 @@ function objective(
     #
     # Blakesley male patient with BMI = p[68] (assuming height 1.77m)
     #
-    ic, p = initialize([1.0; 0.88; 1.0; 0.88], fitting_index=fitting_index, p_being_optimized=p_being_optimized) 
-    p[fitting_index] .= @view(p_being_optimized[1:length(fitting_index)])
+    w = p_being_optimized[end] * 1.77^2 # BMI * h^2
+    ic, p = initialize([1.0; 0.88; 1.0; 0.88], true, 1.77, w, true, 
+        fitting_index=fitting_index, p_being_optimized=p_being_optimized) 
+    p[fitting_index] .= p_being_optimized
     tspan = (0.0, 120.0)
     cbk   = ContinuousCallback(blakesley_condition, add_dose!); 
     p_400 = copy(p)
@@ -78,8 +80,10 @@ function objective(
     #
     # Blakesley female with BMI = p[68] (assuming height 1.63m)
     #
-    ic, p = initialize([1.0; 0.88; 1.0; 0.88], true, 1.61, 58, false, fitting_index=fitting_index, p_being_optimized=p_being_optimized) 
-    p[fitting_index] .= @view(p_being_optimized[1:length(fitting_index)])
+    w = p_being_optimized[end] * 1.63^2 # BMI * h^2
+    ic, p = initialize([1.0; 0.88; 1.0; 0.88], true, 1.63, w, false, 
+        fitting_index=fitting_index, p_being_optimized=p_being_optimized)  
+    p[fitting_index] .= p_being_optimized
     tspan = (0.0, 120.0)
     cbk   = ContinuousCallback(blakesley_condition, add_dose!); 
     p_400 = copy(p)
@@ -153,7 +157,7 @@ function objective(
         _, p = initialize(dial, true, height[i], weight_w1[i], sex[i], fitting_index=fitting_index, p_being_optimized=p_being_optimized)
         p[fitting_index] .= @view(p_being_optimized[1:length(fitting_index)])
 #         T4_error += jonklaas_T4_neg_logl(sol, jonklaas_patient_t4[i, 2], p[47], p[61])
-        T3_error += 10*5*jonklaas_T3_neg_logl(sol, jonklaas_patient_t3[i, 2], p[47], p[62])
+        T3_error += 100jonklaas_T3_neg_logl(sol, jonklaas_patient_t3[i, 2], p[47], p[62])
         TSH_error += jonklaas_TSH_neg_logl(sol, jonklaas_patient_tsh[i, 2], p[47], p[63])
         # run first 8 week simulations, interpolate weight weekly
         weight_diff = (jonklaas_patient_param[i, 2] - jonklaas_patient_param[i, 1]) / 16.0
