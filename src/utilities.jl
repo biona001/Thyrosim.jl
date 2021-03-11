@@ -100,7 +100,7 @@ measured on their first and last visit.
 """
 function jonklaas_data_new()
     datapath = normpath(Thyrosim.datadir())
-    full = CSV.read(datapath * "/jonklaas/jonklass_new_data.csv", DataFrame)
+    full = CSV.read(datapath * "/jonklaas/jonklass_new_data_full.csv", DataFrame)
 
     patient_t4 = convert(Matrix{Float64}, full[:, [6, 10, 14, 18]])
     patient_t3 = convert(Matrix{Float64}, full[:, [8, 12, 16, 20]]) ./ 100
