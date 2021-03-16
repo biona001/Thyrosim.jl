@@ -100,8 +100,9 @@ function initialize(
     height=1.77,
     weight=70,
     sex=true; #true = male, false = female,
-    fitting_index::Vector = Int[],        # needed in fitting
-    p_being_optimized::Vector = Float64[] # needed in fitting
+    fitting_index::Vector = Int[],         # needed in fitting
+    p_being_optimized::Vector = Float64[], # needed in fitting
+    scale_ode::Bool = false
     )
 
     # TODO: need to calculate initial steady state
@@ -127,7 +128,7 @@ function initialize(
     ic[19] = 3.55364471589659
 
     # Parameter values
-    p = zeros(Float64, 68)
+    p = zeros(Float64, 70)
     p[1] = 0.00174155      #S4
     p[2] = 8               #tau
     p[3] = 0.868           #k12
@@ -209,6 +210,10 @@ function initialize(
 
     # Blakesley reference BMI
     p[68] = 22.5
+
+    # Volume scaling ratio
+    p[69] = scale_ode ? 1.0 : predict_Vp(height, weight, sex) / reference_Vp(p[68], sex) # Plasma volumn
+    p[70] = 1.0 # Plasma volume
 
     if length(fitting_index) > 0
         p[fitting_index] .= p_being_optimized
@@ -399,15 +404,16 @@ function thyrosim(dq, q, p, t)
     fLAG = p[41] + 2*q[8]^11 / (p[42]^11 + q[8]^11)
     f4 = p[37]*(1 + 5*(p[53]^p[54]) / (p[53]^p[54]+q[8]^p[54]))
     NL = p[13] / (p[14] + q[2])
+    plasma_volume_ratio = p[69]
 
-    # ODEs
-    dq[1]  = SR4 + p[3] * q[2] + p[4] * q[3] - (p[5] + p[6]) * q1F + p[11] * q[11] #T4dot (need to remove u1)
+    # ODEs (TODO: plasma_volume_ratio might want to be raised to 0.75)
+    dq[1]  = (SR4 + p[3] * q[2] + p[4] * q[3] - (p[5] + p[6]) * q1F + p[11] * q[11]) * plasma_volume_ratio #T4dot (need to remove u1)
     dq[2]  = p[6] * q1F - (p[3] + p[12] + NL) * q[2]                                    #T4fast
     dq[3]  = p[5] * q1F -(p[4] + p[15] / (p[16] + q[3]) + p[17] /(p[18] + q[3])) *q[3]  #T4slow
-    dq[4]  = SR3 + p[20] * q[5] + p[21] * q[6] - (p[22] + p[23]) * q4F + p[28] * q[13]  #T3pdot
+    dq[4]  = (SR3 + p[20] * q[5] + p[21] * q[6] - (p[22] + p[23]) * q4F + p[28] * q[13]) * plasma_volume_ratio  #T3pdot
     dq[5]  = p[23] * q4F + NL * q[2] - (p[20] + p[29]) * q[5]                         #T3fast
     dq[6]  = p[22] * q4F + p[15] * q[3] / (p[16] + q[3]) + p[17] * q[3] / (p[18] + q[3]) -(p[21])*q[6] #T3slow
-    dq[7]  = SRTSH - fdegTSH * q[7]                                           #TSHp
+    dq[7]  = (SRTSH - fdegTSH * q[7]) * plasma_volume_ratio                                           #TSHp
     dq[8]  = f4 / p[38] * q[1] + p[37] / p[39] * q[4] - p[40] * q[8]          #T3B
     dq[9]  = fLAG * (q[8] - q[9])                                             #T3B LAG
     dq[10] = -p[43] * q[10]                                                   #T4PILLdot
