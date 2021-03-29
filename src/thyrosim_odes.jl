@@ -102,7 +102,8 @@ function initialize(
     sex=true; #true = male, false = female,
     fitting_index::Vector = Int[],         # needed in fitting
     p_being_optimized::Vector = Float64[], # needed in fitting
-    scale_ode::Bool = false
+    scale_ode::Bool = false,
+    scale_allometric_exponent::Bool = false
     )
 
     # TODO: need to calculate initial steady state
@@ -128,7 +129,7 @@ function initialize(
     ic[19] = 3.55364471589659
 
     # Parameter values
-    p = zeros(Float64, 70)
+    p = zeros(Float64, 100)
     p[1] = 0.00174155      #S4
     p[2] = 8               #tau
     p[3] = 0.868           #k12
@@ -196,10 +197,10 @@ function initialize(
     p[60] = dial[4] # controls T3 excretion rate
 
     # variance parameters for T4/T3/TSH and schneider error (these are used only for parameter estimation!)
-    p[61] = 5.003761571969437   # σ for T4
-    p[62] = 0.11122955089297369 # σ for T3
-    p[63] = 0.4                 # σ for TSH in Blakesley data
-    p[64] = 1.0 # σ for TSH in Schneider data
+    p[61] = 5.003761571969437   # σ for T4 in Blakesley
+    p[62] = 0.11122955089297369 # σ for T3 Blakesley
+    p[63] = 0.4                 # σ for TSH in Blakesley and Jonklaas
+    p[64] = p[62]               # σ for T3 Jonklaas
 
     # reference plasma volumes corresponding to male/female with BMI 22.5
     p[65] = 2.932691217834299  # male reference Vp
@@ -212,8 +213,9 @@ function initialize(
     p[68] = 22.5
 
     # Volume scaling ratio
-    p[69] = scale_ode ? 1.0 : predict_Vp(height, weight, sex) / reference_Vp(p[68], sex) # Plasma volumn
+    p[69] = scale_ode ? predict_Vp(height, weight, sex) / reference_Vp(p[68], sex) : 1.0 # Plasma volumn
     p[70] = 1.0 # Plasma volume
+    p[71] = scale_allometric_exponent ? 0.75 : 1.0 # allometric exponent for plasma volume
 
     if length(fitting_index) > 0
         p[fitting_index] .= p_being_optimized
@@ -404,7 +406,7 @@ function thyrosim(dq, q, p, t)
     fLAG = p[41] + 2*q[8]^11 / (p[42]^11 + q[8]^11)
     f4 = p[37]*(1 + 5*(p[53]^p[54]) / (p[53]^p[54]+q[8]^p[54]))
     NL = p[13] / (p[14] + q[2])
-    plasma_volume_ratio = p[69]
+    plasma_volume_ratio = p[69]^p[71]
 
     # ODEs (TODO: plasma_volume_ratio might want to be raised to 0.75)
     dq[1]  = (SR4 + p[3] * q[2] + p[4] * q[3] - (p[5] + p[6]) * q1F + p[11] * q[11]) * plasma_volume_ratio #T4dot (need to remove u1)
