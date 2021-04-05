@@ -6,6 +6,7 @@ module Thyrosim
     export initialize!, set_patient_ic!, find_patient_ic!
     export plot_jonklaas, plot_blakesley, plot_jonklaas_T3only
     export simulate
+    export fat_free_mass, adipose_tissue_free_mass
 
     using CSV
     using DelimitedFiles

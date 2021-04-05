@@ -210,12 +210,18 @@ function initialize(
     p[67] = 1.0 
 
     # Blakesley reference BMI
-    p[68] = 22.5
+    p[68] = 22.5 # w / h^2
 
     # Volume scaling ratio
     p[69] = scale_ode ? predict_Vp(height, weight, sex) / reference_Vp(p[68], sex) : 1.0 # Plasma volumn
     p[70] = 1.0 # Plasma volume
     p[71] = scale_allometric_exponent ? 0.75 : 1.0 # allometric exponent for plasma volume
+
+    # slow compartment scaling ratio
+    p[72] = scale_ode ? fat_free_mass(sex, height) / reference_fat_free_mass(sex) : 1.0
+
+    # fast compartment scaling ratio
+    p[73] = 1.0
 
     if length(fitting_index) > 0
         p[fitting_index] .= p_being_optimized
@@ -407,14 +413,16 @@ function thyrosim(dq, q, p, t)
     f4 = p[37]*(1 + 5*(p[53]^p[54]) / (p[53]^p[54]+q[8]^p[54]))
     NL = p[13] / (p[14] + q[2])
     plasma_volume_ratio = p[69]^p[71]
+    slow_volume_ratio = p[72]^p[71]
+    fast_volume_ratio = p[73]^p[71]
 
-    # ODEs (TODO: plasma_volume_ratio might want to be raised to 0.75)
+    # ODEs
     dq[1]  = (SR4 + p[3] * q[2] + p[4] * q[3] - (p[5] + p[6]) * q1F + p[11] * q[11]) * plasma_volume_ratio #T4dot (need to remove u1)
-    dq[2]  = p[6] * q1F - (p[3] + p[12] + NL) * q[2]                                    #T4fast
-    dq[3]  = p[5] * q1F -(p[4] + p[15] / (p[16] + q[3]) + p[17] /(p[18] + q[3])) *q[3]  #T4slow
+    dq[2]  = (p[6] * q1F - (p[3] + p[12] + NL) * q[2]) * fast_volume_ratio                                    #T4fast
+    dq[3]  = (p[5] * q1F -(p[4] + p[15] / (p[16] + q[3]) + p[17] /(p[18] + q[3])) *q[3]) * slow_volume_ratio  #T4slow
     dq[4]  = (SR3 + p[20] * q[5] + p[21] * q[6] - (p[22] + p[23]) * q4F + p[28] * q[13]) * plasma_volume_ratio  #T3pdot
-    dq[5]  = p[23] * q4F + NL * q[2] - (p[20] + p[29]) * q[5]                         #T3fast
-    dq[6]  = p[22] * q4F + p[15] * q[3] / (p[16] + q[3]) + p[17] * q[3] / (p[18] + q[3]) -(p[21])*q[6] #T3slow
+    dq[5]  = (p[23] * q4F + NL * q[2] - (p[20] + p[29]) * q[5]) * fast_volume_ratio                         #T3fast
+    dq[6]  = (p[22] * q4F + p[15] * q[3] / (p[16] + q[3]) + p[17] * q[3] / (p[18] + q[3]) -(p[21])*q[6]) * slow_volume_ratio #T3slow
     dq[7]  = (SRTSH - fdegTSH * q[7]) * plasma_volume_ratio                                           #TSHp
     dq[8]  = f4 / p[38] * q[1] + p[37] / p[39] * q[4] - p[40] * q[8]          #T3B
     dq[9]  = fLAG * (q[8] - q[9])                                             #T3B LAG
@@ -485,4 +493,29 @@ function find_patient_ic!(ic, p, days, model = thyrosim)
     prob = ODEProblem(model, ic, tspan, p)
     sol = solve(prob)
     ic .= sol[end]
+end
+
+# Figure 2 of Heymsfield 2007: https://academic.oup.com/ajcn/article/86/1/82/4633194
+function adipose_tissue_free_mass(sex::Bool, h::Real) #true = male, false = female, height h in meter
+    h_cm = 100h
+    sex ? 0.0006 * h_cm^2.21 : 0.001 * h_cm^2.1 # unit kg
+end
+
+# Figure 3 of Heymsfield 2007: https://academic.oup.com/ajcn/article/86/1/82/4633194
+function fat_free_mass(sex::Bool, h::Real) #true = male, false = female, height h in meter
+    h_cm = 100h
+    sex ? 0.0004 * h_cm^2.3 : 0.0019 * h_cm^1.97 # unit kg
+end
+
+function reference_fat_free_mass(sex::Bool)
+    h = sex ? 1.77 : 1.63 # avg male/female height
+    return fat_free_mass(sex, h) # unit kg
+end
+
+# Table 2 of Muler 2011: https://journals.plos.org/plosone/article?id=10.1371/journal.pone.0022732
+function liver(w::Real, h::Real) # w in kg, h in meter
+    return 0.088 * w^0.54 * h^1.04
+end
+function kidney(w::Real, h::Real)
+    return 0.012 * w^0.72 * h^0.19
 end
