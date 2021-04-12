@@ -5,7 +5,7 @@ using DiffEqParamEstim
 using Optim
 using Statistics
 using LinearAlgebra
-# BLAS.set_num_threads(1)
+BLAS.set_num_threads(1)
 
 function objective(
     p_being_optimized::Vector, # first n elem is parameters, n+1:end is T4/T3 secrete rates
@@ -34,7 +34,9 @@ function objective(
     schneider_postTSH::Vector;      
     verbose::Bool = false, #set to true to display intermediate errors,
     blakesley_tsh_penalty::Float64 = 0.0,
-    scale_ode::Bool = false,
+    scale_plasma_ode=false,
+    scale_slow_ode=false,
+    scale_fast_ode=false,
     scale_allometric_exponent::Bool = false
     )
     total_neg_logl = 0.0
@@ -50,7 +52,8 @@ function objective(
     w = p_being_optimized[end] * 1.77^2 # BMI * h^2
     ic, p = initialize([1.0; 0.88; 1.0; 0.88], true, 1.77, w, true, 
         fitting_index=fitting_index, p_being_optimized=p_being_optimized, 
-        scale_ode=scale_ode, scale_allometric_exponent=scale_allometric_exponent) 
+        scale_plasma_ode=scale_plasma_ode, scale_slow_ode=scale_slow_ode,
+        scale_fast_ode=scale_fast_ode, scale_allometric_exponent=scale_allometric_exponent) 
     tspan = (0.0, 120.0)
     cbk   = ContinuousCallback(blakesley_condition, add_dose!); 
     p_400 = copy(p)
@@ -85,7 +88,8 @@ function objective(
     w = p_being_optimized[end] * 1.63^2 # BMI * h^2
     ic, p = initialize([1.0; 0.88; 1.0; 0.88], true, 1.63, w, false, 
         fitting_index=fitting_index, p_being_optimized=p_being_optimized,
-        scale_ode=scale_ode, scale_allometric_exponent=scale_allometric_exponent)  
+        scale_plasma_ode=scale_plasma_ode, scale_slow_ode=scale_slow_ode,
+        scale_fast_ode=scale_fast_ode, scale_allometric_exponent=scale_allometric_exponent)  
     tspan = (0.0, 120.0)
     cbk   = ContinuousCallback(blakesley_condition, add_dose!); 
     p_400 = copy(p)
@@ -155,7 +159,8 @@ function objective(
         sol = simulate(height[i], weight_w1[i], sex[i], days=50, dial=dial, warmup=false, 
             fitting_index=fitting_index, parameters=p_being_optimized[1:length(fitting_index)])
         _, p = initialize(dial, true, height[i], weight_w1[i], sex[i], fitting_index=fitting_index,
-            p_being_optimized=p_being_optimized, scale_ode=scale_ode,
+            p_being_optimized=p_being_optimized, scale_plasma_ode=scale_plasma_ode, scale_slow_ode=scale_slow_ode,
+            scale_fast_ode=scale_fast_ode, 
             scale_allometric_exponent=scale_allometric_exponent)
 #         T4_error += jonklaas_T4_neg_logl(sol, jonklaas_patient_t4[i, 2], p[47], p[61])
         T3_error += jonklaas_T3_neg_logl(sol, jonklaas_patient_t3[i, 2], p[47], p[64])
@@ -167,7 +172,8 @@ function objective(
             # reset parameters using new weight
             ic, p = initialize(dial, true, height[i], weight_w1[i] + week*weight_diff, sex[i],
                 fitting_index=fitting_index, p_being_optimized=p_being_optimized,
-                scale_ode=scale_ode, scale_allometric_exponent=scale_allometric_exponent)
+                scale_plasma_ode=scale_plasma_ode, scale_slow_ode=scale_slow_ode,
+            scale_fast_ode=scale_fast_ode, scale_allometric_exponent=scale_allometric_exponent)
             p[55] = jonklaas_patient_dose[i, 1] / 777.0
             p[fitting_index] .= @view(p_being_optimized[1:length(fitting_index)])
             # use last week's end value
@@ -184,7 +190,8 @@ function objective(
             # reset parameters using new weight
             ic, p = initialize(dial, true, height[i], weight_w1[i] + week*weight_diff, sex[i],
                 fitting_index=fitting_index, p_being_optimized=p_being_optimized,
-                scale_ode=scale_ode, scale_allometric_exponent=scale_allometric_exponent)
+                scale_plasma_ode=scale_plasma_ode, scale_slow_ode=scale_slow_ode,
+            scale_fast_ode=scale_fast_ode, scale_allometric_exponent=scale_allometric_exponent)
             p[55] = jonklaas_patient_dose[i, 2] / 777.0
             # use last week's end value
             ic .= sol[end]
@@ -474,11 +481,15 @@ function fit_all()
         19.99764911397885, 39.388523580282495]
     lowerbound = zeros(length(initial_guess))
     upperbound = initial_guess .* 10.0
-    upperbound[findall(x -> x == 54, fitting_index)] .= 20
+    upperbound[findall(x -> x == 54, fitting_index)] .= 20.0
+    upperbound[findall(x -> x == 72, fitting_index)] .= 1.0
+    upperbound[findall(x -> x == 73, fitting_index)] .= 1.0
 
     # whether to scale plasma compartments by the Vp ratio
-    scale_ode = true
-    scale_allometric_exponent = false
+    scale_plasma_ode = true
+    scale_slow_ode = false
+    scale_fast_ode = false
+    scale_allometric_exponent = true
     
     # blakesley setup 
     blakesley_time, my400_data, my450_data, my600_data = blakesley_data()
@@ -508,9 +519,10 @@ function fit_all()
         patient_t3, patient_tsh, jonklaas_patient_param, jonklaas_patient_dose,
         jonklaas_exclude_idx, jonklaas_secrete_rate_clusters, height, weight, sex, tspan, 
         init_tsh, euthy_dose, init_dose, postTSH, verbose=false, 
-        blakesley_tsh_penalty=blakesley_tsh_penalty, scale_ode=scale_ode,
+        blakesley_tsh_penalty=blakesley_tsh_penalty, scale_plasma_ode=scale_plasma_ode,
+        scale_slow_ode=scale_slow_ode, scale_fast_ode=scale_fast_ode, 
         scale_allometric_exponent=scale_allometric_exponent), initial_guess, NelderMead(),
-        Optim.Options(time_limit = 75600.0, iterations = 10000, g_tol=1e-5,
+        Optim.Options(time_limit = 86400.0, iterations = 10000, g_tol=1e-5,
         show_trace = true, allow_f_increases=true))
 end
 
@@ -526,8 +538,11 @@ function prefit_error()
     lowerbound = zeros(length(initial_guess))
     upperbound = initial_guess .* 10.0
 
-    scale_ode = true
-    scale_allometric_exponent = false
+    # whether to scale plasma compartments by the Vp ratio
+    scale_plasma_ode = true
+    scale_slow_ode = false
+    scale_fast_ode = false
+    scale_allometric_exponent = true
 
     # blakesley setup
     blakesley_time, my400_data, my450_data, my600_data = blakesley_data()
@@ -572,8 +587,11 @@ function postfit_error(minimizer)
     lowerbound = zeros(length(minimizer))
     upperbound = Inf .* ones(length(minimizer))
 
-    scale_ode = true
-    scale_allometric_exponent = false
+    # whether to scale plasma compartments by the Vp ratio
+    scale_plasma_ode = true
+    scale_slow_ode = false
+    scale_fast_ode = false
+    scale_allometric_exponent = true
 
     # blakesley setup
     blakesley_time, my400_data, my450_data, my600_data = blakesley_data()

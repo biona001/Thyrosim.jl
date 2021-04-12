@@ -102,7 +102,9 @@ function initialize(
     sex=true; #true = male, false = female,
     fitting_index::Vector = Int[],         # needed in fitting
     p_being_optimized::Vector = Float64[], # needed in fitting
-    scale_ode::Bool = false,
+    scale_plasma_ode::Bool = false,
+    scale_slow_ode::Bool = false,
+    scale_fast_ode::Bool = false,
     scale_allometric_exponent::Bool = false
     )
 
@@ -213,15 +215,23 @@ function initialize(
     p[68] = 22.5 # w / h^2
 
     # Volume scaling ratio
-    p[69] = scale_ode ? predict_Vp(height, weight, sex) / reference_Vp(p[68], sex) : 1.0 # Plasma volumn
+    p[69] = scale_plasma_ode ? predict_Vp(height, weight, sex) / reference_Vp(p[68], sex) : 1.0 # Plasma volumn
     p[70] = 1.0 # Plasma volume
     p[71] = scale_allometric_exponent ? 0.75 : 1.0 # allometric exponent for plasma volume
 
     # slow compartment scaling ratio
-    p[72] = scale_ode ? fat_free_mass(sex, height) / reference_fat_free_mass(sex) : 1.0
+    ref_fat_mass = weight - reference_fat_free_mass(sex)
+    ref_fat_free_mass = reference_fat_free_mass(sex)
+    p[72] = 0.0 # fat-free constant
+    p[73] = 1.0 # fat constant
+    slow_compartment_scale = (p[72] * fat_free_mass(sex, height) + p[73] * (weight - fat_free_mass(sex, height))) / 
+        (p[72] * ref_fat_free_mass + p[73] * ref_fat_mass)
+    p[74] = scale_slow_ode ? slow_compartment_scale : 1.0
 
     # fast compartment scaling ratio
-    p[73] = 1.0
+    p[75] = scale_fast_ode ? 1.0 : 1.0
+
+    # interpolating fat-free vs fat mass in slow compartment
 
     if length(fitting_index) > 0
         p[fitting_index] .= p_being_optimized
@@ -401,30 +411,41 @@ ODEs for latest thyrosim model.
 function thyrosim(dq, q, p, t)
     kdelay = 5/8
 
+    # scaling the mass/concentration of compartments
+    plasma_volume_ratio = p[69]^p[71]
+    slow_volume_ratio = p[74]^p[71]
+    fast_volume_ratio = p[75]^p[71]
+
+    # scale comparment sizes
+    q1 = q[1] * 1 / p[69]
+    q2 = q[2] * 1 / p[75]
+    q3 = q[3] * 1 / p[74]
+    q4 = q[4] * 1 / p[69]
+    q5 = q[5] * 1 / p[75]
+    q6 = q[6] * 1 / p[74]
+    q7 = q[7] * 1 / p[69]
+
     # Auxillary equations
-    q4F = (p[24]+ p[25] * q[1] + p[26] * q[1]^2 + p[27] *q[1]^3) * q[4] #FT3p
-    q1F = (p[7] + p[8] * q[1] + p[9] * q[1]^2 + p[10] * q[1]^3) * q[1]  #FT4p
+    q4F = (p[24]+ p[25] * q1 + p[26] * q1^2 + p[27] * q1^3) * q4 #FT3p
+    q1F = (p[7] + p[8] * q1 + p[9] * q1^2 + p[10] * q1^3) * q1  #FT4p
     SR3 = (p[19] * p[59] * q[19])                                        #Brain delay (dial 3)
     SR4 = (p[1] * p[57] * q[19])                                         #Brain delay (dial 1)
     fCIRC = q[9]^p[51] / (q[9]^p[51] + p[49]^p[51])
     SRTSH = (p[30]+p[31]*fCIRC*sin(pi/12*t-p[33]))*(p[50]^p[52]/(p[50]^p[52] + q[9]^p[52]))
-    fdegTSH = p[34] + p[35] / (p[36] + q[7])
+    fdegTSH = p[34] + p[35] / (p[36] + q7)
     fLAG = p[41] + 2*q[8]^11 / (p[42]^11 + q[8]^11)
     f4 = p[37]*(1 + 5*(p[53]^p[54]) / (p[53]^p[54]+q[8]^p[54]))
-    NL = p[13] / (p[14] + q[2])
-    plasma_volume_ratio = p[69]^p[71]
-    slow_volume_ratio = p[72]^p[71]
-    fast_volume_ratio = p[73]^p[71]
+    NL = p[13] / (p[14] + q2)
 
     # ODEs
-    dq[1]  = (SR4 + p[3] * q[2] + p[4] * q[3] - (p[5] + p[6]) * q1F + p[11] * q[11]) * plasma_volume_ratio #T4dot (need to remove u1)
-    dq[2]  = (p[6] * q1F - (p[3] + p[12] + NL) * q[2]) * fast_volume_ratio                                    #T4fast
-    dq[3]  = (p[5] * q1F -(p[4] + p[15] / (p[16] + q[3]) + p[17] /(p[18] + q[3])) *q[3]) * slow_volume_ratio  #T4slow
-    dq[4]  = (SR3 + p[20] * q[5] + p[21] * q[6] - (p[22] + p[23]) * q4F + p[28] * q[13]) * plasma_volume_ratio  #T3pdot
-    dq[5]  = (p[23] * q4F + NL * q[2] - (p[20] + p[29]) * q[5]) * fast_volume_ratio                         #T3fast
-    dq[6]  = (p[22] * q4F + p[15] * q[3] / (p[16] + q[3]) + p[17] * q[3] / (p[18] + q[3]) -(p[21])*q[6]) * slow_volume_ratio #T3slow
-    dq[7]  = (SRTSH - fdegTSH * q[7]) * plasma_volume_ratio                                           #TSHp
-    dq[8]  = f4 / p[38] * q[1] + p[37] / p[39] * q[4] - p[40] * q[8]          #T3B
+    dq[1]  = (SR4 + p[3] * q2 + p[4] * q3 - (p[5] + p[6]) * q1F + p[11] * q[11]) * plasma_volume_ratio #T4dot (need to remove u1)
+    dq[2]  = (p[6] * q1F - (p[3] + p[12] + NL) * q2) * fast_volume_ratio                                    #T4fast
+    dq[3]  = (p[5] * q1F -(p[4] + p[15] / (p[16] + q3) + p[17] /(p[18] + q3)) *q3) * slow_volume_ratio  #T4slow
+    dq[4]  = (SR3 + p[20] * q5 + p[21] * q6 - (p[22] + p[23]) * q4F + p[28] * q[13]) * plasma_volume_ratio  #T3pdot
+    dq[5]  = (p[23] * q4F + NL * q2 - (p[20] + p[29]) * q5) * fast_volume_ratio                         #T3fast
+    dq[6]  = (p[22] * q4F + p[15] * q3 / (p[16] + q3) + p[17] * q3 / (p[18] + q3) -(p[21])*q6) * slow_volume_ratio #T3slow
+    dq[7]  = (SRTSH - fdegTSH * q7) * plasma_volume_ratio                                           #TSHp
+    dq[8]  = f4 / p[38] * q1 + p[37] / p[39] * q4 - p[40] * q[8]          #T3B
     dq[9]  = fLAG * (q[8] - q[9])                                             #T3B LAG
     dq[10] = -p[43] * q[10]                                                   #T4PILLdot
     dq[11] =  p[43] * q[10] - (p[44] * p[58]+ p[11]) * q[11]                  #T4GUTdot: note p[44] * p[58] = p[44] * dial[2] = k4excrete
@@ -432,7 +453,7 @@ function thyrosim(dq, q, p, t)
     dq[13] =  p[45] * q[12] - (p[46] * p[60] + p[28]) * q[13]                 #T3GUTdot: note p[46] * p[60] = p[46] * dial[4] = k3excrete
 
     # Delay ODEs
-    dq[14] = kdelay * (q[7] - q[14]) 
+    dq[14] = kdelay * (q7 - q[14]) 
     dq[15] = kdelay * (q[14] - q[15])                                         #delay2
     dq[16] = kdelay * (q[15] - q[16])                                         #delay3
     dq[17] = kdelay * (q[16] - q[17])                                         #delay4

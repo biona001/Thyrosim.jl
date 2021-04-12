@@ -363,6 +363,10 @@ function simulate(
     warmup::Bool = true,
     fitting_index = Int[],
     parameters = Float64[],
+    scale_plasma_ode=false,
+    scale_slow_ode=false,
+    scale_fast_ode=false,
+    scale_allometric_exponent = false
     )
     function add_dose!(integrator)
         integrator.u[10] += integrator.p[55]
@@ -371,7 +375,11 @@ function simulate(
     cbk = PeriodicCallback(add_dose!, dosing_interval) 
 
     # initialize thyrosim parameters
-    ic, p = initialize([1.0; 0.88; 1.0; 0.88], true, h, w, sex)
+    ic, p = initialize([1.0; 0.88; 1.0; 0.88], true, h, w, sex, 
+        fitting_index=fitting_index, p_being_optimized=parameters,
+        scale_plasma_ode=scale_plasma_ode, scale_slow_ode=scale_slow_ode,
+        scale_fast_ode=scale_fast_ode,
+        scale_allometric_exponent=scale_allometric_exponent)
     p[fitting_index] .= parameters
 
     # run simulation for 30 days to get approximate steady state conditions
@@ -382,7 +390,7 @@ function simulate(
     p[55] = T4dose / 777.0 # daily dose
     p[56] = T3dose / 651.0 # daily dose
     p[57:60] .= dial #set dial
-    
+
     # solve and return ode solution
     prob = ODEProblem(thyrosim,ic,(0.0, 24days),p,callback=cbk)
     return solve(prob)
