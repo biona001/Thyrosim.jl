@@ -475,7 +475,7 @@ function fit_all()
         [1; 13;                  # S4, VtshMax
         30; 31; 37               # A0, B0, k3
         49; 50; 51; 52; 53; 54;  # hill function parameters
-        68]                      # reference BMI
+        68]              # reference BMI, fat-free and fat constant
     initial_guess = [0.0023945993262859343, 0.012555573500192435, 86.61094377109673, 45.7413662531384, 
         0.118, 3.100223484372122, 4.227912612360058, 8.190076965620644, 8.036178509526518, 6.14341819602538, 
         19.99764911397885, 39.388523580282495]
@@ -487,7 +487,7 @@ function fit_all()
 
     # whether to scale plasma compartments by the Vp ratio
     scale_plasma_ode = true
-    scale_slow_ode = false
+    scale_slow_ode = true
     scale_fast_ode = false
     scale_allometric_exponent = true
     
@@ -531,7 +531,7 @@ function prefit_error()
         [1; 13;                  # S4, VtshMax
         30; 31; 37               # A0, B0, k3
         49; 50; 51; 52; 53; 54;  # hill function parameters
-        68]                      # reference BMI
+        68]              # reference BMI, fat-free and fat constant
     initial_guess = [0.0023945993262859343, 0.012555573500192435, 86.61094377109673, 45.7413662531384, 
         0.118, 3.100223484372122, 4.227912612360058, 8.190076965620644, 8.036178509526518, 6.14341819602538, 
         19.99764911397885, 39.388523580282495]
@@ -540,7 +540,7 @@ function prefit_error()
 
     # whether to scale plasma compartments by the Vp ratio
     scale_plasma_ode = true
-    scale_slow_ode = false
+    scale_slow_ode = true
     scale_fast_ode = false
     scale_allometric_exponent = true
 
@@ -571,7 +571,7 @@ function prefit_error()
         patient_t3, patient_tsh, jonklaas_patient_param, jonklaas_patient_dose,
         jonklaas_exclude_idx, jonklaas_secrete_rate_clusters, height, weight, sex, 
         tspan, init_tsh, euthy_dose, init_dose, postTSH, verbose=true, 
-        blakesley_tsh_penalty=blakesley_tsh_penalty, scale_ode=scale_ode,
+        blakesley_tsh_penalty=blakesley_tsh_penalty, 
         scale_allometric_exponent = scale_allometric_exponent)
 end
 
@@ -580,7 +580,7 @@ function postfit_error(minimizer)
         [1; 13;                  # S4, VtshMax
         30; 31; 37               # A0, B0, k3
         49; 50; 51; 52; 53; 54;  # hill function parameters
-        68]                      # reference BMI
+        68]              # reference BMI, fat-free and fat constant
     initial_guess = [0.0023945993262859343, 0.012555573500192435, 86.61094377109673, 45.7413662531384, 
         0.118, 3.100223484372122, 4.227912612360058, 8.190076965620644, 8.036178509526518, 6.14341819602538, 
         19.99764911397885, 39.388523580282495]
@@ -589,7 +589,7 @@ function postfit_error(minimizer)
 
     # whether to scale plasma compartments by the Vp ratio
     scale_plasma_ode = true
-    scale_slow_ode = false
+    scale_slow_ode = true
     scale_fast_ode = false
     scale_allometric_exponent = true
 
@@ -620,7 +620,7 @@ function postfit_error(minimizer)
         patient_t3, patient_tsh, jonklaas_patient_param, jonklaas_patient_dose,
         jonklaas_exclude_idx, jonklaas_secrete_rate_clusters, height, weight, sex,
         tspan, init_tsh, euthy_dose, init_dose, postTSH, verbose=true,
-        blakesley_tsh_penalty=blakesley_tsh_penalty, scale_ode=scale_ode,
+        blakesley_tsh_penalty=blakesley_tsh_penalty, 
         scale_allometric_exponent=scale_allometric_exponent)
 end
 
