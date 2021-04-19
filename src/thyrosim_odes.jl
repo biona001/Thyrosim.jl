@@ -215,32 +215,39 @@ function initialize(
     p[68] = 22.5 # w / h^2
 
     # Volume scaling ratio
-    p[69] = scale_plasma_ode ? predict_Vp(height, weight, sex) / reference_Vp(p[68], sex) : 1.0 # Plasma volumn
-    p[70] = 1.0 # Plasma volume
-    p[71] = scale_allometric_exponent ? 0.75 : 1.0 # allometric exponent for plasma volume
+    p[69] = 1.0 # Plasma volume
+    p[70] = -1.0 # Plasma volume (forgot what this is supposed to represent)
+    p[71] = 1.0 # allometric exponent for plasma volume
 
     # slow compartment scaling ratio
-    ref_weight = p[68] * (sex ? 1.77^2 : 1.63^2)
-    ref_fat_free_mass = reference_fat_free_mass(sex)
-    ref_fat_mass = ref_weight - ref_fat_free_mass
     p[72] = 1.0 # fat-free constant
     p[73] = 0.0 # fat constant
-    slow_compartment_scale = (p[72] * fat_free_mass(sex, height) + p[73] * (weight - fat_free_mass(sex, height))) / 
-        (p[72] * ref_fat_free_mass + p[73] * ref_fat_mass)
-    p[74] = scale_slow_ode ? slow_compartment_scale : 1.0
-
-    # if slow_compartment_scale < 0
-    #     error("slow_compartment_scale = $slow_compartment_scale, weight = $weight, reference_fat_free_mass = $(reference_fat_free_mass(sex))")
-    # end
+    p[74] = 1.0 # scaling ratio for slow compartment
 
     # fast compartment scaling ratio
-    p[75] = scale_fast_ode ? 1.0 : 1.0
+    p[75] = 1.0
 
-    # interpolating fat-free vs fat mass in slow compartment
-
+    # change fitting parameters
     if length(fitting_index) > 0
         p[fitting_index] .= p_being_optimized
     end
+
+    # scale plasma parameters
+    scale_plasma_ode && (p[69] = predict_Vp(height, weight, sex) / reference_Vp(p[68], sex))
+    scale_allometric_exponent && (p[71] = 0.75)
+
+    # scale slow compartment
+    if scale_slow_ode
+        ref_weight = p[68] * (sex ? 1.77^2 : 1.63^2)
+        ref_fat_free_mass = reference_fat_free_mass(sex)
+        ref_fat_mass = ref_weight - ref_fat_free_mass
+        slow_compartment_scale = (p[72] * fat_free_mass(sex, height) + p[73] * (weight - fat_free_mass(sex, height))) / 
+            (p[72] * ref_fat_free_mass + p[73] * ref_fat_mass)
+        p[74] = slow_compartment_scale
+    end
+
+    # scale fast compartment
+    scale_fast_ode && (p[75] = 1.0)
 
     if scale_Vp
         Vp, Vtsh = plasma_volume(height, weight, sex, p[67], p[68])
