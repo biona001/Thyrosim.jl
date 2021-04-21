@@ -200,9 +200,9 @@ function initialize(
 
     # variance parameters for T4/T3/TSH and schneider error (these are used only for parameter estimation!)
     p[61] = 5.003761571969437   # σ for T4 in Blakesley
-    p[62] = 0.11122955089297369 # σ for T3 Blakesley
+    p[62] = 0.11122955089297369 # σ for T3 Blakesley and Jonklaas
     p[63] = 0.4                 # σ for TSH in Blakesley and Jonklaas
-    p[64] = p[62]               # σ for T3 Jonklaas
+    p[64] = 0.27                # σ for FT4 in Jonklaas
 
     # reference plasma volumes corresponding to male/female with BMI 22.5
     p[65] = 2.932691217834299  # male reference Vp
@@ -215,7 +215,7 @@ function initialize(
     p[68] = 22.5 # w / h^2
 
     # Volume scaling ratio
-    p[69] = 1.0 # Plasma volume
+    p[69] = 1.0 # Plasma volume ratio
     p[70] = -1.0 # Plasma volume (forgot what this is supposed to represent)
     p[71] = 1.0 # allometric exponent for plasma volume
 

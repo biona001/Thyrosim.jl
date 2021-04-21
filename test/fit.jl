@@ -49,7 +49,8 @@ function objective(
     #
     # Blakesley male patient with BMI = p[68] (assuming height 1.77m)
     #
-    w = p_being_optimized[end] * 1.77^2 # BMI * h^2
+    bmi = p_being_optimized[findfirst(x -> x == 68, fitting_index)]
+    w = bmi * 1.77^2 # BMI * h^2
     ic, p = initialize([1.0; 0.88; 1.0; 0.88], true, 1.77, w, true, 
         fitting_index=fitting_index, p_being_optimized=p_being_optimized, 
         scale_plasma_ode=scale_plasma_ode, scale_slow_ode=scale_slow_ode,
@@ -85,7 +86,7 @@ function objective(
     #
     # Blakesley female with BMI = p[68] (assuming height 1.63m)
     #
-    w = p_being_optimized[end] * 1.63^2 # BMI * h^2
+    w = bmi * 1.77^2 # BMI * h^2
     ic, p = initialize([1.0; 0.88; 1.0; 0.88], true, 1.63, w, false, 
         fitting_index=fitting_index, p_being_optimized=p_being_optimized,
         scale_plasma_ode=scale_plasma_ode, scale_slow_ode=scale_slow_ode,
@@ -137,7 +138,7 @@ function objective(
 #         prob = ODEProblem(thyrosim,ic,tspan,p,callback=cbk)
 #         sol  = solve(prob, save_idxs=4)
 #         jonklaas_err += jonklaas_t3_neg_logl(sol, jonklaas_time, 
-#             jonklaas_patient_t3[i, :], p[47], p[64])
+#             jonklaas_patient_t3[i, :], p[47], p[62])
 #     end
 #     verbose && println("jonklaas's negative loglikelihood = $jonklaas_err")
 #     total_neg_logl += jonklaas_err
@@ -162,8 +163,8 @@ function objective(
             p_being_optimized=p_being_optimized, scale_plasma_ode=scale_plasma_ode, scale_slow_ode=scale_slow_ode,
             scale_fast_ode=scale_fast_ode, 
             scale_allometric_exponent=scale_allometric_exponent)
-#         T4_error += jonklaas_T4_neg_logl(sol, jonklaas_patient_t4[i, 2], p[47], p[61])
-        T3_error += jonklaas_T3_neg_logl(sol, jonklaas_patient_t3[i, 2], p[47], p[64])
+        T4_error += jonklaas_T4_neg_logl(sol, jonklaas_patient_t4[i, 2], p[47], p[64])
+        T3_error += jonklaas_T3_neg_logl(sol, jonklaas_patient_t3[i, 2], p[47], p[62])
         TSH_error += jonklaas_TSH_neg_logl(sol, jonklaas_patient_tsh[i, 2], p[47], p[63])
         # run first 8 week simulations, interpolate weight weekly
         weight_diff = (jonklaas_patient_param[i, 2] - jonklaas_patient_param[i, 1]) / 16.0
@@ -182,8 +183,8 @@ function objective(
             prob = ODEProblem(thyrosim,ic,(0.0, 168.0),p,callback=cbk)
             sol  = solve(prob)
         end
-#         T4_error += jonklaas_T4_neg_logl(sol, jonklaas_patient_t4[i, 3], p[47], p[61])
-        T3_error += jonklaas_T3_neg_logl(sol, jonklaas_patient_t3[i, 3], p[47], p[64])
+        T4_error += jonklaas_T4_neg_logl(sol, jonklaas_patient_t4[i, 3], p[47], p[64])
+        T3_error += jonklaas_T3_neg_logl(sol, jonklaas_patient_t3[i, 3], p[47], p[62])
         TSH_error += jonklaas_TSH_neg_logl(sol, jonklaas_patient_tsh[i, 3], p[47], p[63])
         # run next 8 week, interpolate weight weekly
         for week in 9:16
@@ -199,12 +200,12 @@ function objective(
             prob = ODEProblem(thyrosim,ic,(0.0, 168.0),p,callback=cbk)
             sol  = solve(prob)
         end
-#         T4_error += jonklaas_T4_neg_logl(sol, jonklaas_patient_t4[i, 3], p[47], p[61])
-        T3_error += jonklaas_T3_neg_logl(sol, jonklaas_patient_t3[i, 3], p[47], p[64])
+        T4_error += jonklaas_T4_neg_logl(sol, jonklaas_patient_t4[i, 3], p[47], p[64])
+        T3_error += jonklaas_T3_neg_logl(sol, jonklaas_patient_t3[i, 3], p[47], p[62])
         TSH_error += jonklaas_TSH_neg_logl(sol, jonklaas_patient_tsh[i, 3], p[47], p[63])
     end
     verbose && println("jonklaas neg logl: T4 = $T4_error, T3 = $T3_error, TSH = $TSH_error")
-    jonklaas_err = T3_error + TSH_error
+    jonklaas_err = T4_error + T3_error + TSH_error
     total_neg_logl += jonklaas_err
     # 
     # Schneider
@@ -224,7 +225,7 @@ function objective(
 #         id = Threads.threadid()
 #         # calculate observations neg logl (units in mcg/kg)
 #         μ = schneider_postTSH[i] # post operative TSH values after 6 weeks treatment
-#         σ = p[64]
+#         σ = p[62]
 #         y = schneider_end_tsh(p_being_optimized, fitting_index, h, w, sex, 
 #             initial_tsh, initial_dose)
 #         schneider_logl[id] += log(2π) / 2 + log(σ) + (y - μ)^2 / 2 / σ^2
@@ -304,11 +305,18 @@ function blakesley_tsh_neg_logl(sol, time, data, Vtsh, σ, λ = 0.0) # sol inclu
     end
     return tot_loss
 end
-# μmol (thyrosim unit for FT4) = Vb/100/777 ng/dL (jonklaas unit)
-function FT4_to_TT4(FT4, Vb)
-    # FT4 in ng/dL. Need to convert it to μmol
-    f(TT4) = (0.000289 + 0.000214TT4 + 0.000128*TT4^2 + -8.83*10^-6*TT4^3) * TT4 - FT4 * Vb / 77700
-    return fzero(f, 100)
+"""
+Converts TT4 (μmol) to FT4 (μmol) using Thyrosim's internal 4th order polynomial
+"""
+function FT4(TT4::Float64)
+    return (0.000289 + (0.000214 * TT4) + (0.000128 * TT4^2) - (8.83e-6 * TT4^3)) * TT4
+end
+
+"""
+Converts TT4 (μmol, Thyrosim output q1) to FT4 (ng/dL, jonklaas's units) 
+"""
+function TT4_to_FT4(TT4::Float64, Vp::Float64)
+    return FT4(TT4) * 777 / Vp * 1000 * 0.45 / 10
 end
 # calculate new jonklaas error for T4 at end of sol
 function jonklaas_T4_neg_logl(sol, data, Vp, σ) # sol includes all comparments
@@ -316,8 +324,8 @@ function jonklaas_T4_neg_logl(sol, data, Vp, σ) # sol includes all comparments
     if any((s.retcode != :Success for s in sol))
         tot_loss = Inf
     else
-        predicted = sol[end][1] * 777.0 / Vp
-        tot_loss += (predicted - FT4_to_TT4(data))^2 / 2σ^2 + log(2π) / 2 + log(σ)
+        predicted_FT4 = TT4_to_FT4(sol[end][1], Vp)
+        tot_loss += (predicted_FT4 - data)^2 / 2σ^2 + log(2π) / 2 + log(σ)
     end
     return tot_loss
 end
@@ -475,13 +483,15 @@ function fit_all()
         [1; 13;                  # S4, VtshMax
         30; 31; 37               # A0, B0, k3
         49; 50; 51; 52; 53; 54;  # hill function parameters
-        68]              # reference BMI, fat-free and fat constant
-    initial_guess = [0.0023945993262859343, 0.012555573500192435, 86.61094377109673, 45.7413662531384, 
-        0.118, 3.100223484372122, 4.227912612360058, 8.190076965620644, 8.036178509526518, 6.14341819602538, 
-        19.99764911397885, 39.388523580282495]
+        68]                      # reference BMI
+    initial_guess = [0.0019892210815454564, 0.012318557740933649, 78.03368752668696, 63.079747932889816, 
+        0.06578735870878696, 3.3739342983833187, 4.39393376334155, 7.183642942358456, 8.91034232003827, 
+        6.863194346722813, 18.848701766376884, 23.929032682987728]
     lowerbound = zeros(length(initial_guess))
+    lowerbound[findall(x -> x == 68, fitting_index)] .= 20.0
     upperbound = initial_guess .* 10.0
     upperbound[findall(x -> x == 54, fitting_index)] .= 20.0
+    upperbound[findall(x -> x == 68, fitting_index)] .= 25.0
     upperbound[findall(x -> x == 72, fitting_index)] .= 1.0
     upperbound[findall(x -> x == 73, fitting_index)] .= 1.0
 
@@ -494,7 +504,7 @@ function fit_all()
     # blakesley setup 
     blakesley_time, my400_data, my450_data, my600_data = blakesley_data()
     blakesley_tsh_penalty = 100.0 # penalize the peak TSH values 
-    
+
     # jonklaas setup
 #     jonklaas_exclude_idx = [4, 7, 11, 18, 22, 23, 26, 36, 44, 45, 46] # TSH > 2 at final time point
 #     jonklaas_exclude_idx = [7, 11, 18, 23, 26, 36, 44, 45, 46] # TSH > 3 at final time point
@@ -522,7 +532,7 @@ function fit_all()
         blakesley_tsh_penalty=blakesley_tsh_penalty, scale_plasma_ode=scale_plasma_ode,
         scale_slow_ode=scale_slow_ode, scale_fast_ode=scale_fast_ode, 
         scale_allometric_exponent=scale_allometric_exponent), initial_guess, NelderMead(),
-        Optim.Options(time_limit = 86400.0, iterations = 10000, g_tol=1e-5,
+        Optim.Options(time_limit = 79200.0, iterations = 10000, g_tol=1e-5,
         show_trace = true, allow_f_increases=true))
 end
 
@@ -531,10 +541,10 @@ function prefit_error()
         [1; 13;                  # S4, VtshMax
         30; 31; 37               # A0, B0, k3
         49; 50; 51; 52; 53; 54;  # hill function parameters
-        68]              # reference BMI, fat-free and fat constant
-    initial_guess = [0.0023945993262859343, 0.012555573500192435, 86.61094377109673, 45.7413662531384, 
-        0.118, 3.100223484372122, 4.227912612360058, 8.190076965620644, 8.036178509526518, 6.14341819602538, 
-        19.99764911397885, 39.388523580282495]
+        68]              # reference BMI
+    initial_guess = [0.0019892210815454564, 0.012318557740933649, 78.03368752668696, 63.079747932889816, 
+        0.06578735870878696, 3.3739342983833187, 4.39393376334155, 7.183642942358456, 8.91034232003827, 
+        6.863194346722813, 18.848701766376884, 23.929032682987728]
     lowerbound = zeros(length(initial_guess))
     upperbound = initial_guess .* 10.0
 
@@ -546,7 +556,7 @@ function prefit_error()
 
     # blakesley setup
     blakesley_time, my400_data, my450_data, my600_data = blakesley_data()
-    blakesley_tsh_penalty = 0.0
+    blakesley_tsh_penalty = 100.0
     # jonklaas setup
     # jonklaas_exclude_idx = [4, 7, 11, 18, 22, 23, 26, 36, 44, 45, 46] # TSH > 2 at final time point
     # jonklaas_exclude_idx = [7, 11, 18, 23, 26, 36, 44, 45, 46] # TSH > 3 at final time point
@@ -580,10 +590,10 @@ function postfit_error(minimizer)
         [1; 13;                  # S4, VtshMax
         30; 31; 37               # A0, B0, k3
         49; 50; 51; 52; 53; 54;  # hill function parameters
-        68]              # reference BMI, fat-free and fat constant
-    initial_guess = [0.0023945993262859343, 0.012555573500192435, 86.61094377109673, 45.7413662531384, 
-        0.118, 3.100223484372122, 4.227912612360058, 8.190076965620644, 8.036178509526518, 6.14341819602538, 
-        19.99764911397885, 39.388523580282495]
+        68]              # reference BMI
+    initial_guess = [0.0019892210815454564, 0.012318557740933649, 78.03368752668696, 63.079747932889816, 
+        0.06578735870878696, 3.3739342983833187, 4.39393376334155, 7.183642942358456, 8.91034232003827, 
+        6.863194346722813, 18.848701766376884, 23.929032682987728]
     lowerbound = zeros(length(minimizer))
     upperbound = Inf .* ones(length(minimizer))
 
@@ -595,7 +605,7 @@ function postfit_error(minimizer)
 
     # blakesley setup
     blakesley_time, my400_data, my450_data, my600_data = blakesley_data()
-    blakesley_tsh_penalty = 0.0
+    blakesley_tsh_penalty = 100.0
     # jonklaas setup
     # jonklaas_exclude_idx = [4, 7, 11, 18, 22, 23, 26, 36, 44, 45, 46] # TSH > 2 at final time point
     # jonklaas_exclude_idx = [7, 11, 18, 23, 26, 36, 44, 45, 46] # TSH > 3 at final time point
