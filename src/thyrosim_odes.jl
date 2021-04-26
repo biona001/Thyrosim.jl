@@ -202,7 +202,7 @@ function initialize(
     p[61] = 5.003761571969437   # σ for T4 in Blakesley
     p[62] = 0.11122955089297369 # σ for T3 Blakesley and Jonklaas
     p[63] = 0.4                 # σ for TSH in Blakesley and Jonklaas
-    p[64] = 0.27                # σ for FT4 in Jonklaas
+    p[64] = 0.1                 # σ for FT4 in Jonklaas
 
     # reference plasma volumes corresponding to male/female with BMI 22.5
     p[65] = 2.932691217834299  # male reference Vp
