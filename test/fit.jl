@@ -486,7 +486,7 @@ function fit_all()
         68; 72; 73]              # reference BMI
     initial_guess = [0.0019892210815454564, 0.012318557740933649, 78.03368752668696, 63.079747932889816, 
         0.06578735870878696, 3.3739342983833187, 4.39393376334155, 7.183642942358456, 8.91034232003827, 
-        6.863194346722813, 18.848701766376884, 23.929032682987728, 1.0, 0.0]
+        6.863194346722813, 18.848701766376884, 23.929032682987728, 0.5, 0.5]
     lowerbound = zeros(length(initial_guess))
     lowerbound[findall(x -> x == 68, fitting_index)] .= 20.0
     upperbound = initial_guess .* 10.0
@@ -544,7 +544,7 @@ function prefit_error()
         68; 72; 73]              # reference BMI
     initial_guess = [0.0019892210815454564, 0.012318557740933649, 78.03368752668696, 63.079747932889816, 
         0.06578735870878696, 3.3739342983833187, 4.39393376334155, 7.183642942358456, 8.91034232003827, 
-        6.863194346722813, 18.848701766376884, 23.929032682987728, 1.0, 0.0]
+        6.863194346722813, 18.848701766376884, 23.929032682987728, 0.5, 0.5]
     lowerbound = zeros(length(initial_guess))
     upperbound = initial_guess .* 10.0
 
@@ -581,7 +581,8 @@ function prefit_error()
         patient_t3, patient_tsh, jonklaas_patient_param, jonklaas_patient_dose,
         jonklaas_exclude_idx, jonklaas_secrete_rate_clusters, height, weight, sex, 
         tspan, init_tsh, euthy_dose, init_dose, postTSH, verbose=true, 
-        blakesley_tsh_penalty=blakesley_tsh_penalty, 
+        blakesley_tsh_penalty=blakesley_tsh_penalty, scale_plasma_ode=scale_plasma_ode, 
+        scale_slow_ode=scale_slow_ode, scale_fast_ode=scale_fast_ode, 
         scale_allometric_exponent = scale_allometric_exponent)
 end
 
@@ -593,7 +594,7 @@ function postfit_error(minimizer)
         68; 72; 73]              # reference BMI
     initial_guess = [0.0019892210815454564, 0.012318557740933649, 78.03368752668696, 63.079747932889816, 
         0.06578735870878696, 3.3739342983833187, 4.39393376334155, 7.183642942358456, 8.91034232003827, 
-        6.863194346722813, 18.848701766376884, 23.929032682987728, 1.0, 0.0]
+        6.863194346722813, 18.848701766376884, 23.929032682987728, 0.5, 0.5]
     lowerbound = zeros(length(minimizer))
     upperbound = Inf .* ones(length(minimizer))
 
@@ -630,7 +631,8 @@ function postfit_error(minimizer)
         patient_t3, patient_tsh, jonklaas_patient_param, jonklaas_patient_dose,
         jonklaas_exclude_idx, jonklaas_secrete_rate_clusters, height, weight, sex,
         tspan, init_tsh, euthy_dose, init_dose, postTSH, verbose=true,
-        blakesley_tsh_penalty=blakesley_tsh_penalty, 
+        blakesley_tsh_penalty=blakesley_tsh_penalty, scale_plasma_ode=scale_plasma_ode, 
+        scale_slow_ode=scale_slow_ode, scale_fast_ode=scale_fast_ode, 
         scale_allometric_exponent=scale_allometric_exponent)
 end
 
