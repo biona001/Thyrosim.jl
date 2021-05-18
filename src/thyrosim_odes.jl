@@ -105,7 +105,8 @@ function initialize(
     scale_plasma_ode::Bool = false,
     scale_slow_ode::Bool = false,
     scale_fast_ode::Bool = false,
-    scale_allometric_exponent::Bool = false
+    scale_allometric_exponent::Bool = false,
+    scale_clearance::Bool = false
     )
 
     # TODO: need to calculate initial steady state
@@ -253,6 +254,17 @@ function initialize(
         Vp, Vtsh = plasma_volume(height, weight, sex, p[67], p[68])
         p[47] = Vp
         p[48] = Vtsh
+    end
+
+    if scale_clearance
+        ref_weight = p[68] * (sex ? 1.77^2 : 1.63^2)
+        ref_fat_free_mass = reference_fat_free_mass(sex)
+        # ref_fat_mass = ref_weight - ref_fat_free_mass
+        # slow_compartment_scale = (p[72] * fat_free_mass(sex, height) + p[73] * (weight - fat_free_mass(sex, height))) / 
+        #     (p[72] * ref_fat_free_mass + p[73] * ref_fat_mass)
+        # p[29] *= fat_free_mass(sex, height) / ref_fat_free_mass
+        # p[29] *= (fat_free_mass(sex, height) / ref_fat_free_mass)^0.75
+        p[29] *= (weight / ref_weight)^0.75
     end
 
     return ic, p
