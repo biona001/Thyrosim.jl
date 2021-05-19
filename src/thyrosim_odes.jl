@@ -228,6 +228,9 @@ function initialize(
     # fast compartment scaling ratio
     p[75] = 1.0
 
+    # allometric exponent for k05 
+    p[76] = 0.75
+
     # change fitting parameters
     if length(fitting_index) > 0
         p[fitting_index] .= p_being_optimized
@@ -264,7 +267,7 @@ function initialize(
         #     (p[72] * ref_fat_free_mass + p[73] * ref_fat_mass)
         # p[29] *= fat_free_mass(sex, height) / ref_fat_free_mass
         # p[29] *= (fat_free_mass(sex, height) / ref_fat_free_mass)^0.75
-        p[29] *= (weight / ref_weight)^0.75
+        p[29] *= (fat_free_mass(sex, height) / ref_fat_free_mass)^p[76]
     end
 
     return ic, p

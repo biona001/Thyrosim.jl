@@ -37,7 +37,8 @@ function objective(
     scale_plasma_ode=false,
     scale_slow_ode=false,
     scale_fast_ode=false,
-    scale_allometric_exponent::Bool = false
+    scale_allometric_exponent::Bool = false,
+    scale_clearance::Bool = false
     )
     total_neg_logl = 0.0
     # quick return
@@ -54,7 +55,8 @@ function objective(
     ic, p = initialize([1.0; 0.88; 1.0; 0.88], true, 1.77, w, true, 
         fitting_index=fitting_index, p_being_optimized=p_being_optimized, 
         scale_plasma_ode=scale_plasma_ode, scale_slow_ode=scale_slow_ode,
-        scale_fast_ode=scale_fast_ode, scale_allometric_exponent=scale_allometric_exponent) 
+        scale_fast_ode=scale_fast_ode, scale_allometric_exponent=scale_allometric_exponent,
+        scale_clearance=scale_clearance) 
     tspan = (0.0, 120.0)
     cbk   = ContinuousCallback(blakesley_condition, add_dose!); 
     p_400 = copy(p)
@@ -90,7 +92,8 @@ function objective(
     ic, p = initialize([1.0; 0.88; 1.0; 0.88], true, 1.63, w, false, 
         fitting_index=fitting_index, p_being_optimized=p_being_optimized,
         scale_plasma_ode=scale_plasma_ode, scale_slow_ode=scale_slow_ode,
-        scale_fast_ode=scale_fast_ode, scale_allometric_exponent=scale_allometric_exponent)  
+        scale_fast_ode=scale_fast_ode, scale_allometric_exponent=scale_allometric_exponent,
+        scale_clearance=scale_clearance)  
     tspan = (0.0, 120.0)
     cbk   = ContinuousCallback(blakesley_condition, add_dose!); 
     p_400 = copy(p)
@@ -161,8 +164,8 @@ function objective(
             fitting_index=fitting_index, parameters=p_being_optimized[1:length(fitting_index)])
         _, p = initialize(dial, true, height[i], weight_w1[i], sex[i], fitting_index=fitting_index,
             p_being_optimized=p_being_optimized, scale_plasma_ode=scale_plasma_ode, scale_slow_ode=scale_slow_ode,
-            scale_fast_ode=scale_fast_ode, 
-            scale_allometric_exponent=scale_allometric_exponent)
+            scale_fast_ode=scale_fast_ode, scale_allometric_exponent=scale_allometric_exponent,
+            scale_clearance=scale_clearance)
         T4_error += jonklaas_T4_neg_logl(sol, jonklaas_patient_t4[i, 2], p[47], p[64])
         T3_error += jonklaas_T3_neg_logl(sol, jonklaas_patient_t3[i, 2], p[47], p[62])
         TSH_error += jonklaas_TSH_neg_logl(sol, jonklaas_patient_tsh[i, 2], p[47], p[63])
@@ -174,7 +177,8 @@ function objective(
             ic, p = initialize(dial, true, height[i], weight_w1[i] + week*weight_diff, sex[i],
                 fitting_index=fitting_index, p_being_optimized=p_being_optimized,
                 scale_plasma_ode=scale_plasma_ode, scale_slow_ode=scale_slow_ode,
-            scale_fast_ode=scale_fast_ode, scale_allometric_exponent=scale_allometric_exponent)
+                scale_fast_ode=scale_fast_ode, scale_allometric_exponent=scale_allometric_exponent,
+                scale_clearance=scale_clearance)
             p[55] = jonklaas_patient_dose[i, 1] / 777.0
             p[fitting_index] .= @view(p_being_optimized[1:length(fitting_index)])
             # use last week's end value
@@ -192,7 +196,8 @@ function objective(
             ic, p = initialize(dial, true, height[i], weight_w1[i] + week*weight_diff, sex[i],
                 fitting_index=fitting_index, p_being_optimized=p_being_optimized,
                 scale_plasma_ode=scale_plasma_ode, scale_slow_ode=scale_slow_ode,
-            scale_fast_ode=scale_fast_ode, scale_allometric_exponent=scale_allometric_exponent)
+                scale_fast_ode=scale_fast_ode, scale_allometric_exponent=scale_allometric_exponent,
+                scale_clearance=scale_clearance)
             p[55] = jonklaas_patient_dose[i, 2] / 777.0
             # use last week's end value
             ic .= sol[end]
@@ -483,9 +488,9 @@ function fit_all()
         [1; 13;                  # S4, VtshMax
         30; 31; 37               # A0, B0, k3
         49; 50; 51; 52; 53; 54;  # hill function parameters
-        68; 72; 73]              # reference BMI
-    initial_guess = [0.0019892210815454564, 0.012318557740933649, 78.03368752668696, 63.079747932889816, 
-        0.06578735870878696, 3.3739342983833187, 4.39393376334155, 7.183642942358456, 8.91034232003827, 
+        68; 72; 73]              # reference BMI, fat-free and fat constant
+    initial_guess = [0.0019892210815454564, 0.012318557740933649, 78.03368752668696, 63.079747932889816,
+        0.06578735870878696, 3.3739342983833187, 4.39393376334155, 7.183642942358456, 8.91034232003827,
         6.863194346722813, 18.848701766376884, 23.929032682987728, 0.5, 0.5]
     lowerbound = zeros(length(initial_guess))
     lowerbound[findall(x -> x == 68, fitting_index)] .= 20.0
@@ -496,10 +501,11 @@ function fit_all()
     upperbound[findall(x -> x == 73, fitting_index)] .= 1.0
 
     # whether to scale plasma compartments by the Vp ratio
-    scale_plasma_ode = true
-    scale_slow_ode = true
+    scale_plasma_ode = false
+    scale_slow_ode = false
     scale_fast_ode = false
-    scale_allometric_exponent = true
+    scale_allometric_exponent = false
+    scale_clearance = true
     
     # blakesley setup 
     blakesley_time, my400_data, my450_data, my600_data = blakesley_data()
@@ -531,9 +537,10 @@ function fit_all()
         init_tsh, euthy_dose, init_dose, postTSH, verbose=false, 
         blakesley_tsh_penalty=blakesley_tsh_penalty, scale_plasma_ode=scale_plasma_ode,
         scale_slow_ode=scale_slow_ode, scale_fast_ode=scale_fast_ode, 
-        scale_allometric_exponent=scale_allometric_exponent), initial_guess, NelderMead(),
-        Optim.Options(time_limit = 79200.0, iterations = 10000, g_tol=1e-5,
-        show_trace = true, allow_f_increases=true))
+        scale_allometric_exponent=scale_allometric_exponent, scale_clearance=scale_clearance),
+            initial_guess, NelderMead(),
+            Optim.Options(time_limit = 600.0, iterations = 10000, g_tol=1e-5,
+            show_trace = true, allow_f_increases=true))
 end
 
 function prefit_error()
@@ -541,18 +548,19 @@ function prefit_error()
         [1; 13;                  # S4, VtshMax
         30; 31; 37               # A0, B0, k3
         49; 50; 51; 52; 53; 54;  # hill function parameters
-        68; 72; 73]              # reference BMI
-    initial_guess = [0.0019892210815454564, 0.012318557740933649, 78.03368752668696, 63.079747932889816, 
-        0.06578735870878696, 3.3739342983833187, 4.39393376334155, 7.183642942358456, 8.91034232003827, 
+        68; 72; 73]              # reference BMI, fat-free and fat constant
+    initial_guess = [0.0019892210815454564, 0.012318557740933649, 78.03368752668696, 63.079747932889816,
+        0.06578735870878696, 3.3739342983833187, 4.39393376334155, 7.183642942358456, 8.91034232003827,
         6.863194346722813, 18.848701766376884, 23.929032682987728, 0.5, 0.5]
     lowerbound = zeros(length(initial_guess))
     upperbound = initial_guess .* 10.0
 
     # whether to scale plasma compartments by the Vp ratio
-    scale_plasma_ode = true
-    scale_slow_ode = true
+    scale_plasma_ode = false
+    scale_slow_ode = false
     scale_fast_ode = false
-    scale_allometric_exponent = true
+    scale_allometric_exponent = false
+    scale_clearance = true
 
     # blakesley setup
     blakesley_time, my400_data, my450_data, my600_data = blakesley_data()
@@ -583,7 +591,7 @@ function prefit_error()
         tspan, init_tsh, euthy_dose, init_dose, postTSH, verbose=true, 
         blakesley_tsh_penalty=blakesley_tsh_penalty, scale_plasma_ode=scale_plasma_ode, 
         scale_slow_ode=scale_slow_ode, scale_fast_ode=scale_fast_ode, 
-        scale_allometric_exponent = scale_allometric_exponent)
+        scale_allometric_exponent = scale_allometric_exponent,scale_clearance=scale_clearance)
 end
 
 function postfit_error(minimizer)
@@ -591,18 +599,19 @@ function postfit_error(minimizer)
         [1; 13;                  # S4, VtshMax
         30; 31; 37               # A0, B0, k3
         49; 50; 51; 52; 53; 54;  # hill function parameters
-        68; 72; 73]              # reference BMI
-    initial_guess = [0.0019892210815454564, 0.012318557740933649, 78.03368752668696, 63.079747932889816, 
-        0.06578735870878696, 3.3739342983833187, 4.39393376334155, 7.183642942358456, 8.91034232003827, 
+        68; 72; 73]              # reference BMI, fat-free and fat constant
+    initial_guess = [0.0019892210815454564, 0.012318557740933649, 78.03368752668696, 63.079747932889816,
+        0.06578735870878696, 3.3739342983833187, 4.39393376334155, 7.183642942358456, 8.91034232003827,
         6.863194346722813, 18.848701766376884, 23.929032682987728, 0.5, 0.5]
     lowerbound = zeros(length(minimizer))
     upperbound = Inf .* ones(length(minimizer))
 
     # whether to scale plasma compartments by the Vp ratio
-    scale_plasma_ode = true
-    scale_slow_ode = true
+    scale_plasma_ode = false
+    scale_slow_ode = false
     scale_fast_ode = false
-    scale_allometric_exponent = true
+    scale_allometric_exponent = false
+    scale_clearance = true
 
     # blakesley setup
     blakesley_time, my400_data, my450_data, my600_data = blakesley_data()
@@ -633,7 +642,7 @@ function postfit_error(minimizer)
         tspan, init_tsh, euthy_dose, init_dose, postTSH, verbose=true,
         blakesley_tsh_penalty=blakesley_tsh_penalty, scale_plasma_ode=scale_plasma_ode, 
         scale_slow_ode=scale_slow_ode, scale_fast_ode=scale_fast_ode, 
-        scale_allometric_exponent=scale_allometric_exponent)
+        scale_allometric_exponent=scale_allometric_exponent,scale_clearance=scale_clearance)
 end
 
 println("Threads = ", Threads.nthreads())
