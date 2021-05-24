@@ -48,9 +48,9 @@ function objective(
         end
     end
     #
-    # Blakesley male patient with BMI = p[68] (assuming height 1.77m)
+    # Blakesley male patient with BMI = p[65] (assuming height 1.77m)
     #
-    bmi = p_being_optimized[findfirst(x -> x == 68, fitting_index)]
+    bmi = p_being_optimized[findfirst(x -> x == 65, fitting_index)]
     w = bmi * 1.77^2 # BMI * h^2
     ic, p = initialize([1.0; 0.88; 1.0; 0.88], true, 1.77, w, true, 
         fitting_index=fitting_index, p_being_optimized=p_being_optimized, 
@@ -86,9 +86,10 @@ function objective(
     verbose && println("blakesley male neg logl: T4 = $T4_error, T3 = $T3_error, TSH = $TSH_error")
     total_neg_logl += blakesley_male_err
     #
-    # Blakesley female with BMI = p[68] (assuming height 1.63m)
+    # Blakesley female with BMI = p[66] (assuming height 1.63m)
     #
-    w = bmi * 1.77^2 # BMI * h^2
+    bmi = p_being_optimized[findfirst(x -> x == 66, fitting_index)]
+    w = bmi * 1.63^2 # BMI * h^2
     ic, p = initialize([1.0; 0.88; 1.0; 0.88], true, 1.63, w, false, 
         fitting_index=fitting_index, p_being_optimized=p_being_optimized,
         scale_plasma_ode=scale_plasma_ode, scale_slow_ode=scale_slow_ode,
@@ -488,15 +489,17 @@ function fit_all()
         [1; 13;                  # S4, VtshMax
         30; 31; 37               # A0, B0, k3
         49; 50; 51; 52; 53; 54;  # hill function parameters
-        68; 72; 73]              # reference BMI, fat-free and fat constant
+        65; 66; 72; 73]          # reference male/female BMI, fat-free and fat constant
     initial_guess = [0.0019892210815454564, 0.012318557740933649, 78.03368752668696, 63.079747932889816,
         0.06578735870878696, 3.3739342983833187, 4.39393376334155, 7.183642942358456, 8.91034232003827,
-        6.863194346722813, 18.848701766376884, 23.929032682987728, 0.5, 0.5]
+        6.863194346722813, 18.848701766376884, 23.929032682987728, 22.5, 0.5, 0.5]
     lowerbound = zeros(length(initial_guess))
-    lowerbound[findall(x -> x == 68, fitting_index)] .= 20.0
     upperbound = initial_guess .* 10.0
+    lowerbound[findall(x -> x == 65, fitting_index)] .= 20.0
+    lowerbound[findall(x -> x == 66, fitting_index)] .= 20.0
+    upperbound[findall(x -> x == 65, fitting_index)] .= 25.0
+    upperbound[findall(x -> x == 66, fitting_index)] .= 25.0
     upperbound[findall(x -> x == 54, fitting_index)] .= 20.0
-    upperbound[findall(x -> x == 68, fitting_index)] .= 25.0
     upperbound[findall(x -> x == 72, fitting_index)] .= 1.0
     upperbound[findall(x -> x == 73, fitting_index)] .= 1.0
 
@@ -539,7 +542,7 @@ function fit_all()
         scale_slow_ode=scale_slow_ode, scale_fast_ode=scale_fast_ode, 
         scale_allometric_exponent=scale_allometric_exponent, scale_clearance=scale_clearance),
             initial_guess, NelderMead(),
-            Optim.Options(time_limit = 600.0, iterations = 10000, g_tol=1e-5,
+            Optim.Options(time_limit = 72000.0, iterations = 10000, g_tol=1e-5,
             show_trace = true, allow_f_increases=true))
 end
 
@@ -548,10 +551,10 @@ function prefit_error()
         [1; 13;                  # S4, VtshMax
         30; 31; 37               # A0, B0, k3
         49; 50; 51; 52; 53; 54;  # hill function parameters
-        68; 72; 73]              # reference BMI, fat-free and fat constant
+        65; 66; 72; 73]          # reference male/female BMI, fat-free and fat constant
     initial_guess = [0.0019892210815454564, 0.012318557740933649, 78.03368752668696, 63.079747932889816,
         0.06578735870878696, 3.3739342983833187, 4.39393376334155, 7.183642942358456, 8.91034232003827,
-        6.863194346722813, 18.848701766376884, 23.929032682987728, 0.5, 0.5]
+        6.863194346722813, 18.848701766376884, 23.929032682987728, 22.5, 0.5, 0.5]
     lowerbound = zeros(length(initial_guess))
     upperbound = initial_guess .* 10.0
 
@@ -599,10 +602,10 @@ function postfit_error(minimizer)
         [1; 13;                  # S4, VtshMax
         30; 31; 37               # A0, B0, k3
         49; 50; 51; 52; 53; 54;  # hill function parameters
-        68; 72; 73]              # reference BMI, fat-free and fat constant
+        65; 66; 72; 73]          # reference male/female BMI, fat-free and fat constant
     initial_guess = [0.0019892210815454564, 0.012318557740933649, 78.03368752668696, 63.079747932889816,
         0.06578735870878696, 3.3739342983833187, 4.39393376334155, 7.183642942358456, 8.91034232003827,
-        6.863194346722813, 18.848701766376884, 23.929032682987728, 0.5, 0.5]
+        6.863194346722813, 18.848701766376884, 23.929032682987728, 22.5, 0.5, 0.5]
     lowerbound = zeros(length(minimizer))
     upperbound = Inf .* ones(length(minimizer))
 

@@ -205,15 +205,15 @@ function initialize(
     p[63] = 0.4                 # σ for TSH in Blakesley and Jonklaas
     p[64] = 0.1                 # σ for FT4 in Jonklaas
 
-    # reference plasma volumes corresponding to male/female with BMI 22.5
-    p[65] = 2.932691217834299  # male reference Vp
-    p[66] = 2.5137479938183125 # female reference Vp
+    # Blakesley reference BMI
+    p[65] = 22.5 # w / h^2 (male)
+    p[66] = 22.5 # w / h^2 (female)
 
     # Vtsh scaling factor
     p[67] = 1.0 
 
-    # Blakesley reference BMI
-    p[68] = 22.5 # w / h^2
+    # extra parameter
+    # p[68] = 22.5 # w / h^2 (female)
 
     # Volume scaling ratio
     p[69] = 1.0 # Plasma volume ratio
@@ -237,12 +237,13 @@ function initialize(
     end
 
     # scale plasma parameters
-    scale_plasma_ode && (p[69] = predict_Vp(height, weight, sex) / reference_Vp(p[68], sex))
+    ref_bmi = sex ? p[65] : p[66]
+    scale_plasma_ode && (p[69] = predict_Vp(height, weight, sex) / reference_Vp(ref_bmi, sex))
     scale_allometric_exponent && (p[71] = 0.75)
 
     # scale slow compartment
     if scale_slow_ode
-        ref_weight = p[68] * (sex ? 1.77^2 : 1.63^2)
+        ref_weight = sex ? p[65] * 1.77^2 : p[66] * 1.63^2
         ref_fat_free_mass = reference_fat_free_mass(sex)
         ref_fat_mass = ref_weight - ref_fat_free_mass
         slow_compartment_scale = (p[72] * fat_free_mass(sex, height) + p[73] * (weight - fat_free_mass(sex, height))) / 
@@ -254,13 +255,13 @@ function initialize(
     scale_fast_ode && (p[75] = 1.0)
 
     if scale_Vp
-        Vp, Vtsh = plasma_volume(height, weight, sex, p[67], p[68])
+        Vp, Vtsh = plasma_volume(height, weight, sex, p[67], ref_bmi)
         p[47] = Vp
         p[48] = Vtsh
     end
 
     if scale_clearance
-        ref_weight = p[68] * (sex ? 1.77^2 : 1.63^2)
+        ref_weight = sex ? p[65] * 1.77^2 : p[66] * 1.63^2
         ref_fat_free_mass = reference_fat_free_mass(sex)
         # ref_fat_mass = ref_weight - ref_fat_free_mass
         # slow_compartment_scale = (p[72] * fat_free_mass(sex, height) + p[73] * (weight - fat_free_mass(sex, height))) / 
@@ -316,16 +317,16 @@ function plasma_volume(h, w, sex::Bool,
 end
 
 """
-    reference_Vp(BMI::Float64, sex::Bool)
+    reference_Vp(ref_BMI::Float64, sex::Bool)
 
 Calculates the "reference plasma volume" for Blakesleys patients with specified
-BMI.
+    .
 
 Since the predicted plasma volume from Feldschush's data is not 3.2, this
 reference volume is used to scale the predicted volume to 3.2. 
 """
-function reference_Vp(BMI::Float64, sex::Bool)
-    # calculate weight for specified BMI. Ideal weight (iw) is fitted to Feldschush's data
+function reference_Vp(ref_BMI::Float64, sex::Bool)
+    # calculate weight for specified ref_BMI. Ideal weight (iw) is fitted to Feldschush's data
     if sex
         h = 1.77 # avg male height
         iw = 176.3 - 220.6 * h + 93.5 * h^2
@@ -333,7 +334,7 @@ function reference_Vp(BMI::Float64, sex::Bool)
         h = 1.63 # avg female height
         iw = 145.8 - 182.7 * h + 79.55 * h^2
     end
-    w = BMI * h^2
+    w = ref_BMI * h^2
 
     return predict_Vp(h, w, sex)
 end
