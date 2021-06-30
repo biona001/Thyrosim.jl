@@ -4,7 +4,7 @@ Initial conditions for original thyrosim model
 function initialize_original_thyrosim(
     dial::Vector{Float64} = [1.0; 0.88; 1.0; 0.88];
     scale_Vp::Bool = true,
-    height=1.77,
+    height=1.70,
     weight=70,
     sex=true #true = male, false = female
     )
@@ -97,7 +97,7 @@ initial conditions for new thyrosim model
 function initialize(
     dial::Vector{Float64} = [1.0; 0.88; 1.0; 0.88],
     scale_Vp::Bool = true,
-    height=1.77,
+    height=1.70,
     weight=70,
     sex=true; #true = male, false = female,
     fitting_index::Vector = Int[],         # needed in fitting
@@ -243,7 +243,7 @@ function initialize(
 
     # scale slow compartment
     if scale_slow_ode
-        ref_weight = sex ? p[65] * 1.77^2 : p[66] * 1.63^2
+        ref_weight = sex ? p[65] * 1.7^2 : p[66] * 1.63^2
         ref_fat_free_mass = reference_fat_free_mass(sex)
         ref_fat_mass = ref_weight - ref_fat_free_mass
         slow_compartment_scale = (p[72] * fat_free_mass(sex, height) + p[73] * (weight - fat_free_mass(sex, height))) / 
@@ -261,7 +261,7 @@ function initialize(
     end
 
     if scale_clearance
-        ref_weight = sex ? p[65] * 1.77^2 : p[66] * 1.63^2
+        ref_weight = sex ? p[65] * 1.7^2 : p[66] * 1.63^2
         ref_fat_free_mass = reference_fat_free_mass(sex)
         # ref_fat_mass = ref_weight - ref_fat_free_mass
         # slow_compartment_scale = (p[72] * fat_free_mass(sex, height) + p[73] * (weight - fat_free_mass(sex, height))) / 
@@ -282,7 +282,7 @@ end
 ## Blakesley data: half male, half female all of "normal weight and height" (but no values given in paper).
 ## height: Average height in USA.
 ## weight: I think we used approximate values from back-transforming it from BMI = 22.5?
-    male_height   = 1.77
+    male_height   = 1.70
     female_height = 1.63
     male_weight   = 70.0
     female_weight = 59.0
@@ -328,7 +328,7 @@ reference volume is used to scale the predicted volume to 3.2.
 function reference_Vp(ref_BMI::Float64, sex::Bool)
     # calculate weight for specified ref_BMI. Ideal weight (iw) is fitted to Feldschush's data
     if sex
-        h = 1.77 # avg male height
+        h = 1.70 # avg male height
         iw = 176.3 - 220.6 * h + 93.5 * h^2
     else
         h = 1.63 # avg female height
@@ -444,6 +444,9 @@ function thyrosim(dq, q, p, t)
     slow_volume_ratio = p[74]^p[71]
     fast_volume_ratio = p[75]^p[71]
 
+    # println("p[69] = $(p[69]), p[74] = $(p[74]), p[75] = $(p[75])")
+    # println("plasma_volume_ratio = $plasma_volume_ratio, slow_volume_ratio = $slow_volume_ratio, fast_volume_ratio = $fast_volume_ratio")
+
     # scale comparment sizes
     q1 = q[1] * 1 / p[69]
     q2 = q[2] * 1 / p[75]
@@ -468,7 +471,7 @@ function thyrosim(dq, q, p, t)
     # ODEs
     dq[1]  = (SR4 + p[3] * q2 + p[4] * q3 - (p[5] + p[6]) * q1F + p[11] * q[11]) * plasma_volume_ratio #T4dot (need to remove u1)
     dq[2]  = (p[6] * q1F - (p[3] + p[12] + NL) * q2) * fast_volume_ratio                                    #T4fast
-    dq[3]  = (p[5] * q1F -(p[4] + p[15] / (p[16] + q3) + p[17] /(p[18] + q3)) *q3) * slow_volume_ratio  #T4slow
+    dq[3]  = (p[5] * q1F -(p[4] + p[15] / (p[16] + q3) + p[17] /(p[18] + q3)) * q3) * slow_volume_ratio  #T4slow
     dq[4]  = (SR3 + p[20] * q5 + p[21] * q6 - (p[22] + p[23]) * q4F + p[28] * q[13]) * plasma_volume_ratio  #T3pdot
     dq[5]  = (p[23] * q4F + NL * q2 - (p[20] + p[29]) * q5) * fast_volume_ratio                         #T3fast
     dq[6]  = (p[22] * q4F + p[15] * q3 / (p[16] + q3) + p[17] * q3 / (p[18] + q3) -(p[21])*q6) * slow_volume_ratio #T3slow
@@ -557,7 +560,7 @@ function fat_free_mass(sex::Bool, h::Real) #true = male, false = female, height 
 end
 
 function reference_fat_free_mass(sex::Bool)
-    h = sex ? 1.77 : 1.63 # avg male/female height
+    h = sex ? 1.70 : 1.63 # avg male/female height
     return fat_free_mass(sex, h) # unit kg
 end
 
