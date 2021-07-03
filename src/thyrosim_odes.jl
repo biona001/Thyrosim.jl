@@ -109,7 +109,7 @@ function initialize(
     scale_clearance::Bool = false
     )
 
-    # TODO: need to calculate initial steady state
+    # initial conditions
     ic    = zeros(Float64, 19)
     ic[1] = 0.322114215761171
     ic[2] = 0.201296960359917
@@ -231,6 +231,10 @@ function initialize(
     # allometric exponent for k05 
     p[76] = 0.75
 
+    # ref height for male and female
+    p[77] = 1.77
+    p[78] = 1.63
+
     # change fitting parameters
     if length(fitting_index) > 0
         p[fitting_index] .= p_being_optimized
@@ -238,13 +242,15 @@ function initialize(
 
     # scale plasma parameters
     ref_bmi = sex ? p[65] : p[66]
-    scale_plasma_ode && (p[69] = predict_Vp(height, weight, sex) / reference_Vp(ref_bmi, sex))
+    if scale_plasma_ode
+        p[69] = predict_Vp(height, weight, sex) / reference_Vp(ref_bmi, sex, sex ? p[77] : p[78])
+    end
     scale_allometric_exponent && (p[71] = 0.75)
 
     # scale slow compartment
     if scale_slow_ode
-        ref_weight = sex ? p[65] * 1.7^2 : p[66] * 1.63^2
-        ref_fat_free_mass = reference_fat_free_mass(sex)
+        ref_weight = sex ? p[65] * p[77]^2 : p[66] * p[78]^2
+        ref_fat_free_mass = reference_fat_free_mass(sex, male_ref_height=p[77], female_ref_height=p[78])
         ref_fat_mass = ref_weight - ref_fat_free_mass
         slow_compartment_scale = (p[72] * fat_free_mass(sex, height) + p[73] * (weight - fat_free_mass(sex, height))) / 
             (p[72] * ref_fat_free_mass + p[73] * ref_fat_mass)
@@ -255,14 +261,14 @@ function initialize(
     scale_fast_ode && (p[75] = 1.0)
 
     if scale_Vp
-        Vp, Vtsh = plasma_volume(height, weight, sex, p[67], ref_bmi)
+        Vp, Vtsh = plasma_volume(height, weight, sex, p[67], ref_bmi, p[77], p[78])
         p[47] = Vp
         p[48] = Vtsh
     end
 
     if scale_clearance
-        ref_weight = sex ? p[65] * 1.7^2 : p[66] * 1.63^2
-        ref_fat_free_mass = reference_fat_free_mass(sex)
+        ref_weight = sex ? p[65] * p[77]^2 : p[66] * p[78]^2
+        ref_fat_free_mass = reference_fat_free_mass(sex, male_ref_height=p[77], female_ref_height=p[78])
         # ref_fat_mass = ref_weight - ref_fat_free_mass
         # slow_compartment_scale = (p[72] * fat_free_mass(sex, height) + p[73] * (weight - fat_free_mass(sex, height))) / 
         #     (p[72] * ref_fat_free_mass + p[73] * ref_fat_mass)
@@ -305,10 +311,11 @@ patient would have Vp_new = 3.2.
 + `Vtsh_new`: Scaled TSH distribution volume (liters)
 """
 function plasma_volume(h, w, sex::Bool,
-    # male_ref_vp=2.933, female_ref_vp=2.514,
-    Vtsh_scale = 1.0, ref_bmi = 22.5
+    Vtsh_scale = 1.0, ref_bmi = 22.5,
+    male_ref_height = 1.7, female_ref_height=1.63
     )
-    Vp_new = predict_Vp(h, w, sex) * 3.2 / reference_Vp(ref_bmi, sex)
+    Vp_new = predict_Vp(h, w, sex) * 3.2 / reference_Vp(ref_bmi, sex, sex ? 
+        male_ref_height : female_ref_height)
 
     # scale Vtsh according to Vtsh_new = Vtsh_old + c(Vp_new - Vp_old) 
     Vtsh_new = 5.2 + Vtsh_scale * (Vp_new - 3.2)
@@ -320,23 +327,20 @@ end
     reference_Vp(ref_BMI::Float64, sex::Bool)
 
 Calculates the "reference plasma volume" for Blakesleys patients with specified
-    .
 
 Since the predicted plasma volume from Feldschush's data is not 3.2, this
 reference volume is used to scale the predicted volume to 3.2. 
 """
-function reference_Vp(ref_BMI::Float64, sex::Bool)
+function reference_Vp(ref_BMI::Float64, sex::Bool, ref_height::Float64)
     # calculate weight for specified ref_BMI. Ideal weight (iw) is fitted to Feldschush's data
     if sex
-        h = 1.70 # avg male height
-        iw = 176.3 - 220.6 * h + 93.5 * h^2
+        iw = 176.3 - 220.6 * ref_height + 93.5 * ref_height^2
     else
-        h = 1.63 # avg female height
-        iw = 145.8 - 182.7 * h + 79.55 * h^2
+        iw = 145.8 - 182.7 * ref_height + 79.55 * ref_height^2
     end
-    w = ref_BMI * h^2
+    w = ref_BMI * ref_height^2
 
-    return predict_Vp(h, w, sex)
+    return predict_Vp(ref_height, w, sex)
 end
 
 """
@@ -559,8 +563,8 @@ function fat_free_mass(sex::Bool, h::Real) #true = male, false = female, height 
     sex ? 0.0004 * h_cm^2.3 : 0.0019 * h_cm^1.97 # unit kg
 end
 
-function reference_fat_free_mass(sex::Bool)
-    h = sex ? 1.70 : 1.63 # avg male/female height
+function reference_fat_free_mass(sex::Bool; male_ref_height=1.7, female_ref_height=1.63)
+    h = sex ? male_ref_height : female_ref_height # avg male/female height
     return fat_free_mass(sex, h) # unit kg
 end
 

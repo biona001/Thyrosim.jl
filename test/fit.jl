@@ -48,11 +48,12 @@ function objective(
         end
     end
     #
-    # Blakesley male patient with BMI = p[65] (assuming height 1.77m)
+    # Blakesley male patient with BMI = p[65]
     #
     bmi = p_being_optimized[findfirst(x -> x == 65, fitting_index)]
-    w = bmi * 1.77^2 # BMI * h^2
-    ic, p = initialize([1.0; 0.88; 1.0; 0.88], true, 1.77, w, true, 
+    male_ref_height = p_being_optimized[findfirst(x -> x == 77, fitting_index)]
+    w = bmi * male_ref_height^2 # BMI * h^2
+    ic, p = initialize([1.0; 0.88; 1.0; 0.88], true, male_ref_height, w, true, 
         fitting_index=fitting_index, p_being_optimized=p_being_optimized, 
         scale_plasma_ode=scale_plasma_ode, scale_slow_ode=scale_slow_ode,
         scale_fast_ode=scale_fast_ode, scale_allometric_exponent=scale_allometric_exponent,
@@ -89,8 +90,9 @@ function objective(
     # Blakesley female with BMI = p[66] (assuming height 1.63m)
     #
     bmi = p_being_optimized[findfirst(x -> x == 66, fitting_index)]
-    w = bmi * 1.63^2 # BMI * h^2
-    ic, p = initialize([1.0; 0.88; 1.0; 0.88], true, 1.63, w, false, 
+    female_ref_height = 1.63
+    w = bmi * female_ref_height^2 # BMI * h^2
+    ic, p = initialize([1.0; 0.88; 1.0; 0.88], true, female_ref_height, w, false, 
         fitting_index=fitting_index, p_being_optimized=p_being_optimized,
         scale_plasma_ode=scale_plasma_ode, scale_slow_ode=scale_slow_ode,
         scale_fast_ode=scale_fast_ode, scale_allometric_exponent=scale_allometric_exponent,
@@ -489,22 +491,25 @@ function fit_all()
         [1; 13;                  # S4, VtshMax
         30; 31; 37               # A0, B0, k3
         49; 50; 51; 52; 53; 54;  # hill function parameters
-        65; 66; 72; 73]          # reference male/female BMI, fat-free and fat constant
+        65; 66; 72; 73;          # reference male/female BMI, fat-free and fat constant
+        77]                      # male ref height
     initial_guess = [0.0019892210815454564, 0.012318557740933649, 78.03368752668696, 63.079747932889816,
         0.06578735870878696, 3.3739342983833187, 4.39393376334155, 7.183642942358456, 8.91034232003827,
-        6.863194346722813, 18.848701766376884, 23.929032682987728, 22.5, 0.5, 0.5]
+        6.863194346722813, 18.848701766376884, 23.929032682987728, 22.5, 0.5, 0.5, 1.77]
     lowerbound = zeros(length(initial_guess))
     upperbound = initial_guess .* 10.0
     lowerbound[findall(x -> x == 65, fitting_index)] .= 20.0
     lowerbound[findall(x -> x == 66, fitting_index)] .= 20.0
+    lowerbound[findall(x -> x == 77, fitting_index)] .= 1.7
     upperbound[findall(x -> x == 65, fitting_index)] .= 25.0
     upperbound[findall(x -> x == 66, fitting_index)] .= 25.0
     upperbound[findall(x -> x == 54, fitting_index)] .= 20.0
     upperbound[findall(x -> x == 72, fitting_index)] .= 1.0
     upperbound[findall(x -> x == 73, fitting_index)] .= 1.0
+    upperbound[findall(x -> x == 77, fitting_index)] .= 1.77
 
     # whether to scale plasma compartments by the Vp ratio
-    scale_plasma_ode = false
+    scale_plasma_ode = true
     scale_slow_ode = false
     scale_fast_ode = false
     scale_allometric_exponent = false
@@ -551,15 +556,16 @@ function prefit_error()
         [1; 13;                  # S4, VtshMax
         30; 31; 37               # A0, B0, k3
         49; 50; 51; 52; 53; 54;  # hill function parameters
-        65; 66; 72; 73]          # reference male/female BMI, fat-free and fat constant
+        65; 66; 72; 73;          # reference male/female BMI, fat-free and fat constant
+        77]                      # male ref height
     initial_guess = [0.0019892210815454564, 0.012318557740933649, 78.03368752668696, 63.079747932889816,
         0.06578735870878696, 3.3739342983833187, 4.39393376334155, 7.183642942358456, 8.91034232003827,
-        6.863194346722813, 18.848701766376884, 23.929032682987728, 22.5, 0.5, 0.5]
+        6.863194346722813, 18.848701766376884, 23.929032682987728, 22.5, 0.5, 0.5, 1.77]
     lowerbound = zeros(length(initial_guess))
     upperbound = initial_guess .* 10.0
 
     # whether to scale plasma compartments by the Vp ratio
-    scale_plasma_ode = false
+    scale_plasma_ode = true
     scale_slow_ode = false
     scale_fast_ode = false
     scale_allometric_exponent = false
@@ -602,15 +608,16 @@ function postfit_error(minimizer)
         [1; 13;                  # S4, VtshMax
         30; 31; 37               # A0, B0, k3
         49; 50; 51; 52; 53; 54;  # hill function parameters
-        65; 66; 72; 73]          # reference male/female BMI, fat-free and fat constant
+        65; 66; 72; 73;          # reference male/female BMI, fat-free and fat constant
+        77]                      # male ref height
     initial_guess = [0.0019892210815454564, 0.012318557740933649, 78.03368752668696, 63.079747932889816,
         0.06578735870878696, 3.3739342983833187, 4.39393376334155, 7.183642942358456, 8.91034232003827,
-        6.863194346722813, 18.848701766376884, 23.929032682987728, 22.5, 0.5, 0.5]
+        6.863194346722813, 18.848701766376884, 23.929032682987728, 22.5, 0.5, 0.5, 1.77]
     lowerbound = zeros(length(minimizer))
     upperbound = Inf .* ones(length(minimizer))
 
     # whether to scale plasma compartments by the Vp ratio
-    scale_plasma_ode = false
+    scale_plasma_ode = true
     scale_slow_ode = false
     scale_fast_ode = false
     scale_allometric_exponent = false
