@@ -106,8 +106,13 @@ function initialize(
     scale_slow_ode::Bool = false,
     scale_fast_ode::Bool = false,
     scale_allometric_exponent::Bool = false,
-    scale_clearance::Bool = false
+    scale_clearance::Bool = false,
+    scale_clearance_fatfree::Bool = false
     )
+
+    if scale_clearance_fatfree && scale_clearance
+        error("Scaling clearnce by fat free mass and by mass is true simultaneously! Shouldn't happen!")
+    end
 
     # initial conditions
     ic    = zeros(Float64, 19)
@@ -236,6 +241,9 @@ function initialize(
     p[78] = 1.77
     p[79] = 1.63
 
+    # clearance scale (male / female)
+    p[80] = 1.5 # male clearance is 150% of female
+
     # change fitting parameters
     if length(fitting_index) > 0
         p[fitting_index] .= p_being_optimized
@@ -267,16 +275,18 @@ function initialize(
         p[48] = Vtsh
     end
 
+    clearance_allometric_exp = sex ? p[76] : p[77]
     if scale_clearance
         ref_weight = sex ? p[65] * p[78]^2 : p[66] * p[79]^2
-        ref_fat_free_mass = reference_fat_free_mass(sex, male_ref_height=p[78], female_ref_height=p[79])
         # ref_fat_mass = ref_weight - ref_fat_free_mass
         # slow_compartment_scale = (p[72] * fat_free_mass(sex, height) + p[73] * (weight - fat_free_mass(sex, height))) / 
         #     (p[72] * ref_fat_free_mass + p[73] * ref_fat_mass)
-        # p[29] *= fat_free_mass(sex, height) / ref_fat_free_mass
-        # p[29] *= (fat_free_mass(sex, height) / ref_fat_free_mass)^0.75
-        clearance_allometric_exp = sex ? p[76] : p[77]
+        p[29] *= (weight / ref_weight)^clearance_allometric_exp
+        sex && (p[29] *= p[80])
+    elseif scale_clearance_fatfree
+        ref_fat_free_mass = reference_fat_free_mass(sex, male_ref_height=p[78], female_ref_height=p[79])
         p[29] *= (fat_free_mass(sex, height) / ref_fat_free_mass)^clearance_allometric_exp
+        sex && (p[29] *= p[80])
     end
 
     return ic, p
