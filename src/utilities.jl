@@ -367,7 +367,8 @@ function simulate(
     scale_slow_ode=false,
     scale_fast_ode=false,
     scale_allometric_exponent = false,
-    scale_clearance = false
+    scale_clearance = false,
+    scale_clearance_fatfree = false
     )
     function add_dose!(integrator)
         integrator.u[10] += integrator.p[55]
@@ -381,7 +382,8 @@ function simulate(
         scale_plasma_ode=scale_plasma_ode, scale_slow_ode=scale_slow_ode,
         scale_fast_ode=scale_fast_ode,
         scale_allometric_exponent=scale_allometric_exponent,
-        scale_clearance=scale_clearance)
+        scale_clearance=scale_clearance, 
+        scale_clearance_fatfree=scale_clearance_fatfree)
     p[fitting_index] .= parameters
 
     # run simulation for 30 days to get approximate steady state conditions
