@@ -252,7 +252,9 @@ function initialize(
     # scale plasma parameters
     ref_bmi = sex ? p[65] : p[66]
     if scale_plasma_ode
-        p[69] = predict_Vp(height, weight, sex) / reference_Vp(ref_bmi, sex, sex ? p[78] : p[79])
+        # for now, assume male and females have the same ref Vp (ie average male/female ref Vp)
+        ref_Vp = (reference_Vp(ref_bmi, true, p[78]) + reference_Vp(ref_bmi, false, p[79])) / 2
+        p[69] = predict_Vp(height, weight, sex) / ref_Vp
     end
     scale_allometric_exponent && (p[71] = 0.75)
 
@@ -326,8 +328,9 @@ function plasma_volume(h, w, sex::Bool,
     Vtsh_scale = 1.0, ref_bmi = 22.5,
     male_ref_height = 1.7, female_ref_height=1.63
     )
-    Vp_new = predict_Vp(h, w, sex) * 3.2 / reference_Vp(ref_bmi, sex, sex ? 
-        male_ref_height : female_ref_height)
+    # for now, assume male and females have the same ref Vp (ie average male/female ref Vp)
+    ref_Vp = (reference_Vp(ref_bmi, true, male_ref_height) + reference_Vp(ref_bmi, false, female_ref_height)) / 2
+    Vp_new = predict_Vp(h, w, sex) * 3.2 / ref_Vp
 
     # scale Vtsh according to Vtsh_new = Vtsh_old + c(Vp_new - Vp_old) 
     Vtsh_new = 5.2 + Vtsh_scale * (Vp_new - 3.2)

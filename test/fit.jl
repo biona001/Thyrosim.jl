@@ -516,8 +516,8 @@ function fit_all()
     scale_slow_ode = false
     scale_fast_ode = false
     scale_allometric_exponent = false
-    scale_clearance = false
-    scale_clearance_fatfree = true
+    scale_clearance = true
+    scale_clearance_fatfree = false
 
     # blakesley setup 
     blakesley_time, my400_data, my450_data, my600_data = blakesley_data()
@@ -574,8 +574,8 @@ function prefit_error()
     scale_slow_ode = false
     scale_fast_ode = false
     scale_allometric_exponent = false
-    scale_clearance = false
-    scale_clearance_fatfree = true
+    scale_clearance = true
+    scale_clearance_fatfree = false
 
     # blakesley setup
     blakesley_time, my400_data, my450_data, my600_data = blakesley_data()
@@ -628,8 +628,8 @@ function postfit_error(minimizer)
     scale_slow_ode = false
     scale_fast_ode = false
     scale_allometric_exponent = false
-    scale_clearance = false
-    scale_clearance_fatfree = true
+    scale_clearance = true
+    scale_clearance_fatfree = false
 
     # blakesley setup
     blakesley_time, my400_data, my450_data, my600_data = blakesley_data()
