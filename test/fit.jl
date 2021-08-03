@@ -38,8 +38,7 @@ function objective(
     scale_slow_ode=false,
     scale_fast_ode=false,
     scale_allometric_exponent::Bool = false,
-    scale_clearance::Bool = false,
-    scale_clearance_fatfree::Bool = false
+    scale_clearance_by_gender::Bool = false,
     )
     total_neg_logl = 0.0
     # quick return
@@ -58,7 +57,7 @@ function objective(
         fitting_index=fitting_index, p_being_optimized=p_being_optimized, 
         scale_plasma_ode=scale_plasma_ode, scale_slow_ode=scale_slow_ode,
         scale_fast_ode=scale_fast_ode, scale_allometric_exponent=scale_allometric_exponent,
-        scale_clearance=scale_clearance, scale_clearance_fatfree=scale_clearance_fatfree) 
+        scale_clearance_by_gender=scale_clearance_by_gender) 
     tspan = (0.0, 120.0)
     cbk   = ContinuousCallback(blakesley_condition, add_dose!); 
     p_400 = copy(p)
@@ -91,13 +90,13 @@ function objective(
     # Blakesley female with BMI = p[66] (assuming height 1.63m)
     #
     bmi = p_being_optimized[findfirst(x -> x == 66, fitting_index)]
-    female_ref_height = 1.63
+    female_ref_height = p_being_optimized[findfirst(x -> x == 79, fitting_index)]
     w = bmi * female_ref_height^2 # BMI * h^2
     ic, p = initialize([1.0; 0.88; 1.0; 0.88], true, female_ref_height, w, false, 
         fitting_index=fitting_index, p_being_optimized=p_being_optimized,
         scale_plasma_ode=scale_plasma_ode, scale_slow_ode=scale_slow_ode,
         scale_fast_ode=scale_fast_ode, scale_allometric_exponent=scale_allometric_exponent,
-        scale_clearance=scale_clearance, scale_clearance_fatfree=scale_clearance_fatfree)  
+        scale_clearance_by_gender=scale_clearance_by_gender)  
     tspan = (0.0, 120.0)
     cbk   = ContinuousCallback(blakesley_condition, add_dose!); 
     p_400 = copy(p)
@@ -169,7 +168,7 @@ function objective(
         _, p = initialize(dial, true, height[i], weight_w1[i], sex[i], fitting_index=fitting_index,
             p_being_optimized=p_being_optimized, scale_plasma_ode=scale_plasma_ode, scale_slow_ode=scale_slow_ode,
             scale_fast_ode=scale_fast_ode, scale_allometric_exponent=scale_allometric_exponent,
-            scale_clearance=scale_clearance, scale_clearance_fatfree=scale_clearance_fatfree)
+            scale_clearance_by_gender=scale_clearance_by_gender)
         T4_error += jonklaas_T4_neg_logl(sol, jonklaas_patient_t4[i, 2], p[47], p[64])
         T3_error += jonklaas_T3_neg_logl(sol, jonklaas_patient_t3[i, 2], p[47], p[62])
         TSH_error += jonklaas_TSH_neg_logl(sol, jonklaas_patient_tsh[i, 2], p[47], p[63])
@@ -182,7 +181,7 @@ function objective(
                 fitting_index=fitting_index, p_being_optimized=p_being_optimized,
                 scale_plasma_ode=scale_plasma_ode, scale_slow_ode=scale_slow_ode,
                 scale_fast_ode=scale_fast_ode, scale_allometric_exponent=scale_allometric_exponent,
-                scale_clearance=scale_clearance, scale_clearance_fatfree=scale_clearance_fatfree)
+                scale_clearance_by_gender=scale_clearance_by_gender)
             p[55] = jonklaas_patient_dose[i, 1] / 777.0
             p[fitting_index] .= @view(p_being_optimized[1:length(fitting_index)])
             # use last week's end value
@@ -201,7 +200,7 @@ function objective(
                 fitting_index=fitting_index, p_being_optimized=p_being_optimized,
                 scale_plasma_ode=scale_plasma_ode, scale_slow_ode=scale_slow_ode,
                 scale_fast_ode=scale_fast_ode, scale_allometric_exponent=scale_allometric_exponent,
-                scale_clearance=scale_clearance, scale_clearance_fatfree=scale_clearance_fatfree)
+                scale_clearance_by_gender=scale_clearance_by_gender)
             p[55] = jonklaas_patient_dose[i, 2] / 777.0
             # use last week's end value
             ic .= sol[end]
@@ -325,7 +324,7 @@ end
 Converts TT4 (μmol, Thyrosim output q1) to FT4 (ng/dL, jonklaas's units) 
 """
 function TT4_to_FT4(TT4::Float64, Vp::Float64)
-    return FT4(TT4) * 777 / Vp * 1000 * 0.45 / 10
+    return FT4(TT4) * 777 / Vp * 1000 * 0.4 / 10
 end
 # calculate new jonklaas error for T4 at end of sol
 function jonklaas_T4_neg_logl(sol, data, Vp, σ) # sol includes all comparments
@@ -383,7 +382,7 @@ function schneider_end_tsh(
     # run ODE simulation
     p[55] = initial_dose / 777.0
     prob  = ODEProblem(thyrosim,ic,(0.0, 1008),p,callback=cbk) # simulate for 6 weeks
-    sol   = solve(prob, Tsit5(), save_idxs=[1, 7])
+    sol   = solve(prob, save_idxs=[1, 7])
 
     # return observed value
     return sol.u[end][2] * 5.6 / p[48]
@@ -492,11 +491,11 @@ function fit_all()
         [1; 13;                  # S4, VtshMax
         30; 31; 37               # A0, B0, k3
         49; 50; 51; 52; 53; 54;  # hill function parameters
-        65; 66; 72; 73;          # reference male/female BMI, fat-free and fat constant
-        76; 78; 80]              # male allometric exponent for clearance, male ref height, male clearance scale
+        65; 66;                  # reference male/female BMI
+        78; 79]                  # male/female ref height
     initial_guess = [0.0019892210815454564, 0.012318557740933649, 78.03368752668696, 63.079747932889816,
         0.06578735870878696, 3.3739342983833187, 4.39393376334155, 7.183642942358456, 8.91034232003827,
-        6.863194346722813, 18.848701766376884, 23.929032682987728, 22.5, 0.5, 0.5, 0.75, 1.77, 1.5]
+        6.863194346722813, 18.848701766376884, 23.929032682987728, 22.5, 1.77, 1.63]
     lowerbound = zeros(length(initial_guess))
     upperbound = initial_guess .* 10.0
     lowerbound[findall(x -> x == 65, fitting_index)] .= 20.0
@@ -516,8 +515,7 @@ function fit_all()
     scale_slow_ode = false
     scale_fast_ode = false
     scale_allometric_exponent = false
-    scale_clearance = true
-    scale_clearance_fatfree = false
+    scale_clearance_by_gender = true
 
     # blakesley setup 
     blakesley_time, my400_data, my450_data, my600_data = blakesley_data()
@@ -549,8 +547,8 @@ function fit_all()
         init_tsh, euthy_dose, init_dose, postTSH, verbose=false, 
         blakesley_tsh_penalty=blakesley_tsh_penalty, scale_plasma_ode=scale_plasma_ode,
         scale_slow_ode=scale_slow_ode, scale_fast_ode=scale_fast_ode, 
-        scale_allometric_exponent=scale_allometric_exponent, scale_clearance=scale_clearance, 
-        scale_clearance_fatfree=scale_clearance_fatfree),
+        scale_allometric_exponent=scale_allometric_exponent, scale_clearance_by_gender=scale_clearance_by_gender 
+        ),
             initial_guess, NelderMead(),
             Optim.Options(time_limit = 72000.0, iterations = 10000, g_tol=1e-5,
             show_trace = true, allow_f_increases=true))
@@ -574,8 +572,7 @@ function prefit_error()
     scale_slow_ode = false
     scale_fast_ode = false
     scale_allometric_exponent = false
-    scale_clearance = true
-    scale_clearance_fatfree = false
+    scale_clearance_by_gender = true
 
     # blakesley setup
     blakesley_time, my400_data, my450_data, my600_data = blakesley_data()
@@ -606,8 +603,8 @@ function prefit_error()
         tspan, init_tsh, euthy_dose, init_dose, postTSH, verbose=true, 
         blakesley_tsh_penalty=blakesley_tsh_penalty, scale_plasma_ode=scale_plasma_ode, 
         scale_slow_ode=scale_slow_ode, scale_fast_ode=scale_fast_ode, 
-        scale_allometric_exponent = scale_allometric_exponent,scale_clearance=scale_clearance,
-        scale_clearance_fatfree=scale_clearance_fatfree)
+        scale_allometric_exponent = scale_allometric_exponent,
+        scale_clearance_by_gender=scale_clearance_by_gender)
 end
 
 function postfit_error(minimizer)
@@ -628,8 +625,7 @@ function postfit_error(minimizer)
     scale_slow_ode = false
     scale_fast_ode = false
     scale_allometric_exponent = false
-    scale_clearance = true
-    scale_clearance_fatfree = false
+    scale_clearance_by_gender = true
 
     # blakesley setup
     blakesley_time, my400_data, my450_data, my600_data = blakesley_data()
@@ -660,8 +656,8 @@ function postfit_error(minimizer)
         tspan, init_tsh, euthy_dose, init_dose, postTSH, verbose=true,
         blakesley_tsh_penalty=blakesley_tsh_penalty, scale_plasma_ode=scale_plasma_ode, 
         scale_slow_ode=scale_slow_ode, scale_fast_ode=scale_fast_ode, 
-        scale_allometric_exponent=scale_allometric_exponent,scale_clearance=scale_clearance,
-        scale_clearance_fatfree=scale_clearance_fatfree)
+        scale_allometric_exponent=scale_allometric_exponent,
+        scale_clearance_by_gender=scale_clearance_by_gender)
 end
 
 println("Threads = ", Threads.nthreads())
