@@ -352,14 +352,14 @@ If `warmup = true`, will first run the model for 30 days, assuming healthy
 thyroid function, to get approximate initial condition. 
 """
 function simulate(
-    h::Float64, # units meters
-    w::Float64, # units kg
+    h::Real, # units meters
+    w::Real, # units kg
     sex::Bool; # true = male, false = female
     days::Int=30, 
     dial=[1.0; 0.88; 1.0; 0.88], 
-    T4dose::Float64=0.0, # mcgs
-    T3dose::Float64=0.0, # mcgs
-    dosing_interval::Float64=24.0, #hours
+    T4dose::Real=0.0, # mcgs
+    T3dose::Real=0.0, # mcgs
+    dosing_interval::Real=24.0, #hours
     warmup::Bool = true,
     fitting_index = Int[],
     parameters = Float64[],

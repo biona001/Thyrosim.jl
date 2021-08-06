@@ -488,11 +488,11 @@ end
 
 function fit_all()
     fitting_index =
-        [1; 13;                  # S4, VtshMax
+        [1; 13; 29;              # S4, VtshMax, k05
         30; 31; 37               # A0, B0, k3
         49; 50; 51; 52; 53; 54;  # hill function parameters
         65; 66;                  # reference male/female BMI
-        78; 79]                  # male/female ref height
+        78; 79; 80]              # male/female ref height, male clearnace prefactor
     initial_guess = [0.0019892210815454564, 0.012318557740933649, 78.03368752668696, 63.079747932889816,
         0.06578735870878696, 3.3739342983833187, 4.39393376334155, 7.183642942358456, 8.91034232003827,
         6.863194346722813, 18.848701766376884, 23.929032682987728, 22.5, 1.77, 1.63]
@@ -501,13 +501,15 @@ function fit_all()
     lowerbound[findall(x -> x == 65, fitting_index)] .= 20.0
     lowerbound[findall(x -> x == 66, fitting_index)] .= 20.0
     lowerbound[findall(x -> x == 78, fitting_index)] .= 1.7
+    lowerbound[findall(x -> x == 79, fitting_index)] .= 1.57
     upperbound[findall(x -> x == 65, fitting_index)] .= 25.0
     upperbound[findall(x -> x == 66, fitting_index)] .= 25.0
     upperbound[findall(x -> x == 54, fitting_index)] .= 20.0
     upperbound[findall(x -> x == 72, fitting_index)] .= 1.0
     upperbound[findall(x -> x == 73, fitting_index)] .= 1.0
     upperbound[findall(x -> x == 76, fitting_index)] .= 1.0
-    upperbound[findall(x -> x == 78, fitting_index)] .= 1.77
+    upperbound[findall(x -> x == 78, fitting_index)] .= 1.8
+    upperbound[findall(x -> x == 79, fitting_index)] .= 1.67
     upperbound[findall(x -> x == 80, fitting_index)] .= 10.0
 
     # whether to scale plasma compartments by the Vp ratio
@@ -559,11 +561,11 @@ function prefit_error()
         [1; 13;                  # S4, VtshMax
         30; 31; 37               # A0, B0, k3
         49; 50; 51; 52; 53; 54;  # hill function parameters
-        65; 66; 72; 73;          # reference male/female BMI, fat-free and fat constant
-        76; 78; 80]              # male allometric exponent for clearance, male ref height, male clearance scale
+        65; 66;                  # reference male/female BMI
+        78; 79]                  # male/female ref height
     initial_guess = [0.0019892210815454564, 0.012318557740933649, 78.03368752668696, 63.079747932889816,
         0.06578735870878696, 3.3739342983833187, 4.39393376334155, 7.183642942358456, 8.91034232003827,
-        6.863194346722813, 18.848701766376884, 23.929032682987728, 22.5, 0.5, 0.5, 0.75, 1.77, 1.5]
+        6.863194346722813, 18.848701766376884, 23.929032682987728, 22.5, 1.77, 1.63]
     lowerbound = zeros(length(initial_guess))
     upperbound = initial_guess .* 10.0
 
@@ -612,11 +614,11 @@ function postfit_error(minimizer)
         [1; 13;                  # S4, VtshMax
         30; 31; 37               # A0, B0, k3
         49; 50; 51; 52; 53; 54;  # hill function parameters
-        65; 66; 72; 73;          # reference male/female BMI, fat-free and fat constant
-        76; 78; 80]              # male allometric exponent for clearance, male ref height, male clearance scale
+        65; 66;                  # reference male/female BMI
+        78; 79]                  # male/female ref height
     initial_guess = [0.0019892210815454564, 0.012318557740933649, 78.03368752668696, 63.079747932889816,
         0.06578735870878696, 3.3739342983833187, 4.39393376334155, 7.183642942358456, 8.91034232003827,
-        6.863194346722813, 18.848701766376884, 23.929032682987728, 22.5, 0.5, 0.5, 0.75, 1.77, 1.5]
+        6.863194346722813, 18.848701766376884, 23.929032682987728, 22.5, 1.77, 1.63]
     lowerbound = zeros(length(minimizer))
     upperbound = Inf .* ones(length(minimizer))
 

@@ -279,6 +279,7 @@ function initialize(
         ref_weight = (p[65] * p[78]^2 + p[66] * p[79]^2) / 2
     end
     p[29] *= (weight / ref_weight)^clearance_allometric_exp
+    sex && (p[29] *= p[80]) # scale male k05 by prefactor
 
     return ic, p
 end
