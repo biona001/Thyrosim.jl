@@ -239,6 +239,10 @@ function initialize(
     # clearance scale (male / female)
     p[80] = 1.0 # male clearance is 100% of female by default
 
+    # infusion parameters
+    p[81] = 0.0 # T4 infusion
+    p[82] = 0.0 # T3 infusion
+
     # change fitting parameters
     if length(fitting_index) > 0
         p[fitting_index] .= p_being_optimized
@@ -475,10 +479,10 @@ function thyrosim(dq, q, p, t)
     NL = p[13] / (p[14] + q2)
 
     # ODEs
-    dq[1]  = (SR4 + p[3] * q2 + p[4] * q3 - (p[5] + p[6]) * q1F) * plasma_volume_ratio + p[11] * q[11] #T4dot (need to remove u1)
+    dq[1]  = p[81] + (SR4 + p[3] * q2 + p[4] * q3 - (p[5] + p[6]) * q1F) * plasma_volume_ratio + p[11] * q[11] #T4dot (need to remove u1)
     dq[2]  = (p[6] * q1F - (p[3] + p[12] + NL) * q2) * fast_volume_ratio                                    #T4fast
     dq[3]  = (p[5] * q1F -(p[4] + p[15] / (p[16] + q3) + p[17] /(p[18] + q3)) * q3) * slow_volume_ratio  #T4slow
-    dq[4]  = (SR3 + p[20] * q5 + p[21] * q6 - (p[22] + p[23]) * q4F) * plasma_volume_ratio + p[28] * q[13] #T3pdot
+    dq[4]  = p[82] + (SR3 + p[20] * q5 + p[21] * q6 - (p[22] + p[23]) * q4F) * plasma_volume_ratio + p[28] * q[13] #T3pdot
     dq[5]  = (p[23] * q4F + NL * q2 - (p[20] + p[29]) * q5) * fast_volume_ratio                         #T3fast
     dq[6]  = (p[22] * q4F + p[15] * q3 / (p[16] + q3) + p[17] * q3 / (p[18] + q3) -(p[21])*q6) * slow_volume_ratio #T3slow
     dq[7]  = (SRTSH - fdegTSH * q7) * plasma_volume_ratio                                           #TSHp
