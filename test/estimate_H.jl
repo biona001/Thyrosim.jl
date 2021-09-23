@@ -1,4 +1,5 @@
 using DifferentialEquations
+using DelimitedFiles
 using Thyrosim
 using DiffEqCallbacks
 using DiffEqParamEstim
@@ -493,9 +494,10 @@ function fit_all()
         49; 50; 51; 52; 53; 54;  # hill function parameters
         65; 66;                  # reference male/female BMI
         78; 79; 80]              # male/female ref height, male clearnace prefactor
-    initial_guess = [0.0019892210815454564, 0.012318557740933649, 0.207, 78.03368752668696, 63.079747932889816,
-        0.06578735870878696, 3.3739342983833187, 4.39393376334155, 7.183642942358456, 8.91034232003827,
-        6.863194346722813, 18.848701766376884, 23.929032682987728, 22.5, 1.77, 1.63, 1.0]
+    initial_guess = [0.002829095940670636, 0.012015472995653597, 0.1873562155868959, 99.9576660125602, 
+        57.72199041137823, 0.07429815739070803, 4.056980972034785, 4.373393724464587, 7.586781907287207, 
+        9.238169561409876, 6.921616932787185, 18.395311175535472, 24.967334992407675, 22.834022908476285,
+        1.7454833653602382, 1.6693489274655398, 0.9935713575041025]
     lowerbound = zeros(length(initial_guess))
     upperbound = initial_guess .* 10.0
     lowerbound[findall(x -> x == 65, fitting_index)] .= 20.0
@@ -551,9 +553,9 @@ function fit_all()
         scale_slow_ode=scale_slow_ode, scale_fast_ode=scale_fast_ode, 
         scale_allometric_exponent=scale_allometric_exponent, scale_clearance_by_gender=scale_clearance_by_gender 
         ),
-            initial_guess, NelderMead(),
+            initial_guess, BFGS(),
             Optim.Options(time_limit = 72000.0, iterations = 10000, g_tol=1e-5,
-            show_trace = true, allow_f_increases=true))
+            show_trace = true, allow_f_increases=true, store_trace=true, extended_trace=true))
 end
 
 function prefit_error()
@@ -563,9 +565,10 @@ function prefit_error()
         49; 50; 51; 52; 53; 54;  # hill function parameters
         65; 66;                  # reference male/female BMI
         78; 79; 80]              # male/female ref height, male clearnace prefactor
-    initial_guess = [0.0019892210815454564, 0.012318557740933649, 0.207, 78.03368752668696, 63.079747932889816,
-        0.06578735870878696, 3.3739342983833187, 4.39393376334155, 7.183642942358456, 8.91034232003827,
-        6.863194346722813, 18.848701766376884, 23.929032682987728, 22.5, 1.77, 1.63, 1.0]
+    initial_guess = [0.002829095940670636, 0.012015472995653597, 0.1873562155868959, 99.9576660125602, 
+        57.72199041137823, 0.07429815739070803, 4.056980972034785, 4.373393724464587, 7.586781907287207, 
+        9.238169561409876, 6.921616932787185, 18.395311175535472, 24.967334992407675, 22.834022908476285,
+        1.7454833653602382, 1.6693489274655398, 0.9935713575041025]
     lowerbound = zeros(length(initial_guess))
     upperbound = initial_guess .* 10.0
 
@@ -616,9 +619,10 @@ function postfit_error(minimizer)
         49; 50; 51; 52; 53; 54;  # hill function parameters
         65; 66;                  # reference male/female BMI
         78; 79; 80]              # male/female ref height, male clearnace prefactor
-    initial_guess = [0.0019892210815454564, 0.012318557740933649, 0.207, 78.03368752668696, 63.079747932889816,
-        0.06578735870878696, 3.3739342983833187, 4.39393376334155, 7.183642942358456, 8.91034232003827,
-        6.863194346722813, 18.848701766376884, 23.929032682987728, 22.5, 1.77, 1.63, 1.0]
+    initial_guess = [0.002829095940670636, 0.012015472995653597, 0.1873562155868959, 99.9576660125602, 
+        57.72199041137823, 0.07429815739070803, 4.056980972034785, 4.373393724464587, 7.586781907287207, 
+        9.238169561409876, 6.921616932787185, 18.395311175535472, 24.967334992407675, 22.834022908476285,
+        1.7454833653602382, 1.6693489274655398, 0.9935713575041025]
     lowerbound = zeros(length(minimizer))
     upperbound = Inf .* ones(length(minimizer))
 
@@ -670,6 +674,8 @@ println("total prefit error = $prefit \n")
 flush(stdout)
 
 result = fit_all()
+mylast = result.trace[end]
+writedlm("inv_hessian.txt", mylast.metadata["~inv(H)"])
 
 println("postfit error:")
 post = postfit_error(result.minimizer)

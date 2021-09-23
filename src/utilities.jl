@@ -102,19 +102,19 @@ function jonklaas_data_new()
     datapath = normpath(Thyrosim.datadir())
     full = CSV.read(datapath * "/jonklaas/jonklass_new_data_full.csv", DataFrame)
 
-    patient_t4 = convert(Matrix{Float64}, full[:, [6, 10, 14, 18]])
-    patient_t3 = convert(Matrix{Float64}, full[:, [8, 12, 16, 20]]) ./ 100
-    patient_tsh = convert(Matrix{Float64}, full[:, [9, 13, 17, 21]])
+    patient_t4 = Matrix(full[:, [6, 10, 14, 18]])
+    patient_t3 = Matrix(full[:, [8, 12, 16, 20]]) ./ 100
+    patient_tsh = Matrix(full[:, [9, 13, 17, 21]])
 
     dose_w1 = full[!, 22] # 1st dose
     dose_w4 = full[!, 23] # final dose
-    patient_dose = convert(Matrix{Float64}, [dose_w1 dose_w4])
+    patient_dose = Matrix([dose_w1 dose_w4])
 
     weight_w1 = full[!, 25] # week 1 weight (KG)
     weight_w4 = full[!, 26] # week 4 weight (KG)
     height = full[!, 27] ./ 100 # height (convert cm to meters)
     sex = full[!, 1] .== "M" # 1 is male, 0 is female
-    patient_param = convert(Matrix{Float64}, [weight_w1 weight_w4 height sex])
+    patient_param = Matrix([weight_w1 weight_w4 height sex])
 
     return patient_param, patient_dose, patient_t4, patient_t3, patient_tsh
 end
