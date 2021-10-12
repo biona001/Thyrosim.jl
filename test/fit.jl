@@ -489,11 +489,11 @@ end
 function fit_all()
     fitting_index =
         [1; 13; 29;              # S4, VtshMax, k05
-        31; 37                   # B0, k3
+        31; 37;                  # A0, k3
         49; 50; 51; 52; 53; 54;  # hill function parameters
         65; 66;                  # reference male/female BMI
         78; 79; 80]              # male/female ref height, male clearnace prefactor
-    initial_guess = [0.0019892210815454564, 0.012318557740933649, 0.207, 63.079747932889816,
+    initial_guess = [0.0019892210815454564, 0.012318557740933649, 0.207, 78.03368752668696,
         0.06578735870878696, 3.3739342983833187, 4.39393376334155, 7.183642942358456, 8.91034232003827,
         6.863194346722813, 18.848701766376884, 23.929032682987728, 22.5, 1.77, 1.63, 1.0]
     lowerbound = zeros(length(initial_guess))
@@ -559,11 +559,11 @@ end
 function prefit_error()
     fitting_index =
         [1; 13; 29;              # S4, VtshMax, k05
-        31; 37                   # B0, k3
+        31; 37;                  # A0, k3
         49; 50; 51; 52; 53; 54;  # hill function parameters
         65; 66;                  # reference male/female BMI
         78; 79; 80]              # male/female ref height, male clearnace prefactor
-    initial_guess = [0.0019892210815454564, 0.012318557740933649, 0.207, 63.079747932889816,
+    initial_guess = [0.0019892210815454564, 0.012318557740933649, 0.207, 78.03368752668696,
         0.06578735870878696, 3.3739342983833187, 4.39393376334155, 7.183642942358456, 8.91034232003827,
         6.863194346722813, 18.848701766376884, 23.929032682987728, 22.5, 1.77, 1.63, 1.0]
     lowerbound = zeros(length(initial_guess))
@@ -612,11 +612,11 @@ end
 function postfit_error(minimizer)
     fitting_index =
         [1; 13; 29;              # S4, VtshMax, k05
-        31; 37                   # B0, k3
+        31; 37;                  # A0, k3
         49; 50; 51; 52; 53; 54;  # hill function parameters
         65; 66;                  # reference male/female BMI
         78; 79; 80]              # male/female ref height, male clearnace prefactor
-    initial_guess = [0.0019892210815454564, 0.012318557740933649, 0.207, 63.079747932889816,
+    initial_guess = [0.0019892210815454564, 0.012318557740933649, 0.207, 78.03368752668696,
         0.06578735870878696, 3.3739342983833187, 4.39393376334155, 7.183642942358456, 8.91034232003827,
         6.863194346722813, 18.848701766376884, 23.929032682987728, 22.5, 1.77, 1.63, 1.0]
     lowerbound = zeros(length(minimizer))
