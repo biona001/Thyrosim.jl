@@ -102,6 +102,7 @@ function initialize(
     sex=true; #true = male, false = female,
     fitting_index::Vector = Int[],         # needed in fitting
     p_being_optimized::Vector = Float64[], # needed in fitting
+    fixed_parameters::Vector{Tuple{Int, Float64}}, # (a, b) means fix p[a] at b 
     scale_plasma_ode::Bool = false,
     scale_slow_ode::Bool = false,
     scale_fast_ode::Bool = false,
@@ -284,6 +285,11 @@ function initialize(
     end
     p[29] *= (weight / ref_weight)^clearance_allometric_exp
     sex && (p[29] *= p[80]) # scale male k05 by prefactor
+
+    # fix parameters declared by users
+    for (a, b) in fixed_parameters
+        p[a] = b
+    end
 
     return ic, p
 end
