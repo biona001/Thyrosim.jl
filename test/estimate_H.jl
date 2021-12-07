@@ -9,8 +9,9 @@ using LinearAlgebra
 BLAS.set_num_threads(1)
 
 function objective(
-    p_being_optimized::Vector, # first n elem is parameters, n+1:end is T4/T3 secrete rates
+    p_being_optimized::Vector,
     fitting_index::Vector, 
+    fixed_parameters::Vector,
     lowerbound::Vector,
     upperbound::Vector,
     blakesley_time::Matrix,
@@ -56,6 +57,7 @@ function objective(
     w = bmi * male_ref_height^2 # BMI * h^2
     ic, p = initialize([1.0; 0.88; 1.0; 0.88], true, male_ref_height, w, true, 
         fitting_index=fitting_index, p_being_optimized=p_being_optimized, 
+        fixed_parameters=fixed_parameters,
         scale_plasma_ode=scale_plasma_ode, scale_slow_ode=scale_slow_ode,
         scale_fast_ode=scale_fast_ode, scale_allometric_exponent=scale_allometric_exponent,
         scale_clearance_by_gender=scale_clearance_by_gender) 
@@ -95,6 +97,7 @@ function objective(
     w = bmi * female_ref_height^2 # BMI * h^2
     ic, p = initialize([1.0; 0.88; 1.0; 0.88], true, female_ref_height, w, false, 
         fitting_index=fitting_index, p_being_optimized=p_being_optimized,
+        fixed_parameters=fixed_parameters,
         scale_plasma_ode=scale_plasma_ode, scale_slow_ode=scale_slow_ode,
         scale_fast_ode=scale_fast_ode, scale_allometric_exponent=scale_allometric_exponent,
         scale_clearance_by_gender=scale_clearance_by_gender)  
@@ -165,9 +168,11 @@ function objective(
         # run model to steady state before actual simulation
         dial[1] = dial[3] = 1.0
         sol = simulate(height[i], weight_w1[i], sex[i], days=50, dial=dial, warmup=false, 
-            fitting_index=fitting_index, parameters=p_being_optimized[1:length(fitting_index)])
+            fitting_index=fitting_index, parameters=p_being_optimized[1:length(fitting_index)],
+            fixed_parameters=fixed_parameters)
         _, p = initialize(dial, true, height[i], weight_w1[i], sex[i], fitting_index=fitting_index,
-            p_being_optimized=p_being_optimized, scale_plasma_ode=scale_plasma_ode, scale_slow_ode=scale_slow_ode,
+            p_being_optimized=p_being_optimized, fixed_parameters=fixed_parameters,
+            scale_plasma_ode=scale_plasma_ode, scale_slow_ode=scale_slow_ode,
             scale_fast_ode=scale_fast_ode, scale_allometric_exponent=scale_allometric_exponent,
             scale_clearance_by_gender=scale_clearance_by_gender)
         T4_error += jonklaas_T4_neg_logl(sol, jonklaas_patient_t4[i, 2], p[47], p[64])
@@ -180,6 +185,7 @@ function objective(
             # reset parameters using new weight
             ic, p = initialize(dial, true, height[i], weight_w1[i] + week*weight_diff, sex[i],
                 fitting_index=fitting_index, p_being_optimized=p_being_optimized,
+                fixed_parameters=fixed_parameters,
                 scale_plasma_ode=scale_plasma_ode, scale_slow_ode=scale_slow_ode,
                 scale_fast_ode=scale_fast_ode, scale_allometric_exponent=scale_allometric_exponent,
                 scale_clearance_by_gender=scale_clearance_by_gender)
@@ -199,6 +205,7 @@ function objective(
             # reset parameters using new weight
             ic, p = initialize(dial, true, height[i], weight_w1[i] + week*weight_diff, sex[i],
                 fitting_index=fitting_index, p_being_optimized=p_being_optimized,
+                fixed_parameters=fixed_parameters,
                 scale_plasma_ode=scale_plasma_ode, scale_slow_ode=scale_slow_ode,
                 scale_fast_ode=scale_fast_ode, scale_allometric_exponent=scale_allometric_exponent,
                 scale_clearance_by_gender=scale_clearance_by_gender)
@@ -487,31 +494,41 @@ function update_logl_by_category!(logl_by_category::Vector, logl, sex, height, w
     end
 end
 
-function fit_all()
+function fit_all(max_tsh)
     fitting_index =
-        [1; 13; 29;              # S4, VtshMax, k05
-        30; 37;                  # B0, k3
+        [29; 31; 37;             # k05, A0, k3
         49; 50; 51; 52; 53; 54;  # hill function parameters
         65; 66;                  # reference male/female BMI
         78; 79; 80]              # male/female ref height, male clearnace prefactor
-    initial_guess = [0.0027758107882599734, 0.011084401838912591, 0.17718580491741961, 130.8360096212617, 
-        0.0418022795373158, 4.2523782441421965, 2.494051886081945, 8.594950265998117, 11.44206229304105, 
-        3.6282111912381665, 18.642532861505437, 22.826927511756082, 21.18178737054212, 1.7861442512856562,
-        1.6699661197060511, 1.0660690196862286]
+
+    fixed_parameters = [(1, 0.003), (13, 0.013)]
+    if max_tsh == 1000
+        push!(fixed_parameters, (30, 450.0))
+        initial_guess = [0.19179911421009715, 244.79105436315652, 0.06196251270883499, 2.9829606411617853, 3.1006504744289036, 7.157113213176866, 6.280173843007693, 8.4570215416264, 13.886061315670931, 24.992738685690238, 22.287994629010132, 1.7300777357191246, 1.7256891795338822, 1.053489389134615]
+    elseif max_tsh == 750
+        push!(fixed_parameters, (30, 340.0))
+        initial_guess = [0.19107081562485467, 193.5507299030582, 0.06320369610333797, 3.615396541662386, 3.193329709817921, 5.859945166207494, 6.210074353735259, 8.366805296070277, 14.201304509730553, 24.96799231593123, 22.54811036867362, 1.7313281654269794, 1.7178301177489292, 1.06438708061412]
+    elseif max_tsh == 500
+        push!(fixed_parameters, (30, 230.0))
+        initial_guess = [0.18977780586388368, 131.1279825479093, 0.06359971398688721, 4.287300160732276, 3.6293532287259835, 5.669525939478856, 6.498189609201551, 8.616148459660245, 14.498969420047226, 24.98117821947933, 22.685604045053235, 1.7302774965439316, 1.7127347332128753, 1.0847978702217405]
+    elseif max_tsh == 300
+        push!(fixed_parameters, (30, 140.0))
+        initial_guess = [0.19247496579361736, 81.00084144797488, 0.06224548885002129, 4.475195057622472, 3.938017071000577, 5.494979474293497, 6.372542683797962, 8.894559324717209, 14.744073366639663, 24.991327848284516, 24.16253341905854, 1.7154460253326431, 1.6963652060335312, 1.0406224327778444]
+    else
+        error("max_tsh should be 1000, 750, 500, or 300, but was $max_tsh")
+    end
     lowerbound = zeros(length(initial_guess))
     upperbound = initial_guess .* 10.0
     lowerbound[findall(x -> x == 65, fitting_index)] .= 20.0
     lowerbound[findall(x -> x == 66, fitting_index)] .= 20.0
     lowerbound[findall(x -> x == 78, fitting_index)] .= 1.7
-    lowerbound[findall(x -> x == 79, fitting_index)] .= 1.57
     upperbound[findall(x -> x == 65, fitting_index)] .= 25.0
     upperbound[findall(x -> x == 66, fitting_index)] .= 25.0
     upperbound[findall(x -> x == 54, fitting_index)] .= 20.0
     upperbound[findall(x -> x == 72, fitting_index)] .= 1.0
     upperbound[findall(x -> x == 73, fitting_index)] .= 1.0
     upperbound[findall(x -> x == 76, fitting_index)] .= 1.0
-    upperbound[findall(x -> x == 78, fitting_index)] .= 1.8
-    upperbound[findall(x -> x == 79, fitting_index)] .= 1.67
+    upperbound[findall(x -> x == 78, fitting_index)] .= 1.77
     upperbound[findall(x -> x == 80, fitting_index)] .= 10.0
 
     # whether to scale plasma compartments by the Vp ratio
@@ -544,7 +561,7 @@ function fit_all()
     init_dose  = convert(Vector{Float64}, train_data[!, Symbol("LT4.initial.dose")])
     postTSH = convert(Vector{Float64}, train_data[!, Symbol("6 week TSH")])
     
-    return optimize(p -> objective(p, fitting_index, lowerbound, upperbound, 
+    return Optim.optimize(p -> objective(p, fitting_index, fixed_parameters, lowerbound, upperbound, 
         blakesley_time, my400_data, my450_data, my600_data, jonklaas_time, patient_t4, 
         patient_t3, patient_tsh, jonklaas_patient_param, jonklaas_patient_dose,
         jonklaas_exclude_idx, jonklaas_secrete_rate_clusters, height, weight, sex, tspan, 
@@ -554,21 +571,33 @@ function fit_all()
         scale_allometric_exponent=scale_allometric_exponent, scale_clearance_by_gender=scale_clearance_by_gender 
         ),
             initial_guess, BFGS(),
-            Optim.Options(time_limit = 50400.0, iterations = 10000, g_tol=1e-5,
+            Optim.Options(time_limit = 72000.0, iterations = 10000, g_tol=1e-5,
             show_trace = true, allow_f_increases=true, store_trace=true, extended_trace=true))
 end
 
-function prefit_error()
+function prefit_error(max_tsh)
     fitting_index =
-        [1; 13; 29;              # S4, VtshMax, k05
-        30; 37;                  # B0, k3
+        [29; 31; 37;             # k05, A0, k3
         49; 50; 51; 52; 53; 54;  # hill function parameters
         65; 66;                  # reference male/female BMI
         78; 79; 80]              # male/female ref height, male clearnace prefactor
-    initial_guess = [0.0027758107882599734, 0.011084401838912591, 0.17718580491741961, 130.8360096212617, 
-        0.0418022795373158, 4.2523782441421965, 2.494051886081945, 8.594950265998117, 11.44206229304105, 
-        3.6282111912381665, 18.642532861505437, 22.826927511756082, 21.18178737054212, 1.7861442512856562,
-        1.6699661197060511, 1.0660690196862286]
+
+    fixed_parameters = [(1, 0.003), (13, 0.013)]
+    if max_tsh == 1000
+        push!(fixed_parameters, (30, 450.0))
+        initial_guess = [0.19179911421009715, 244.79105436315652, 0.06196251270883499, 2.9829606411617853, 3.1006504744289036, 7.157113213176866, 6.280173843007693, 8.4570215416264, 13.886061315670931, 24.992738685690238, 22.287994629010132, 1.7300777357191246, 1.7256891795338822, 1.053489389134615]
+    elseif max_tsh == 750
+        push!(fixed_parameters, (30, 340.0))
+        initial_guess = [0.19107081562485467, 193.5507299030582, 0.06320369610333797, 3.615396541662386, 3.193329709817921, 5.859945166207494, 6.210074353735259, 8.366805296070277, 14.201304509730553, 24.96799231593123, 22.54811036867362, 1.7313281654269794, 1.7178301177489292, 1.06438708061412]
+    elseif max_tsh == 500
+        push!(fixed_parameters, (30, 230.0))
+        initial_guess = [0.18977780586388368, 131.1279825479093, 0.06359971398688721, 4.287300160732276, 3.6293532287259835, 5.669525939478856, 6.498189609201551, 8.616148459660245, 14.498969420047226, 24.98117821947933, 22.685604045053235, 1.7302774965439316, 1.7127347332128753, 1.0847978702217405]
+    elseif max_tsh == 300
+        push!(fixed_parameters, (30, 140.0))
+        initial_guess = [0.19247496579361736, 81.00084144797488, 0.06224548885002129, 4.475195057622472, 3.938017071000577, 5.494979474293497, 6.372542683797962, 8.894559324717209, 14.744073366639663, 24.991327848284516, 24.16253341905854, 1.7154460253326431, 1.6963652060335312, 1.0406224327778444]
+    else
+        error("max_tsh should be 1000, 750, 500, or 300, but was $max_tsh")
+    end
     lowerbound = zeros(length(initial_guess))
     upperbound = initial_guess .* 10.0
 
@@ -601,7 +630,7 @@ function prefit_error()
     init_dose  = convert(Vector{Float64}, train_data[!, Symbol("LT4.initial.dose")])
     postTSH = convert(Vector{Float64}, train_data[!, Symbol("6 week TSH")])
 
-    return objective(initial_guess, fitting_index, lowerbound, upperbound, 
+    return objective(initial_guess, fitting_index, fixed_parameters, lowerbound, upperbound, 
         blakesley_time, my400_data, my450_data, my600_data, jonklaas_time, patient_t4, 
         patient_t3, patient_tsh, jonklaas_patient_param, jonklaas_patient_dose,
         jonklaas_exclude_idx, jonklaas_secrete_rate_clusters, height, weight, sex, 
@@ -614,17 +643,29 @@ end
 
 function postfit_error(minimizer)
     fitting_index =
-        [1; 13; 29;              # S4, VtshMax, k05
-        30; 37;                  # B0, k3
+        [29; 31; 37;             # k05, A0, k3
         49; 50; 51; 52; 53; 54;  # hill function parameters
         65; 66;                  # reference male/female BMI
         78; 79; 80]              # male/female ref height, male clearnace prefactor
-    initial_guess = [0.0027758107882599734, 0.011084401838912591, 0.17718580491741961, 130.8360096212617, 
-        0.0418022795373158, 4.2523782441421965, 2.494051886081945, 8.594950265998117, 11.44206229304105, 
-        3.6282111912381665, 18.642532861505437, 22.826927511756082, 21.18178737054212, 1.7861442512856562,
-        1.6699661197060511, 1.0660690196862286]
-    lowerbound = zeros(length(minimizer))
-    upperbound = Inf .* ones(length(minimizer))
+
+    fixed_parameters = [(1, 0.003), (13, 0.013)]
+    if max_tsh == 1000
+        push!(fixed_parameters, (30, 450.0))
+        initial_guess = [0.19179911421009715, 244.79105436315652, 0.06196251270883499, 2.9829606411617853, 3.1006504744289036, 7.157113213176866, 6.280173843007693, 8.4570215416264, 13.886061315670931, 24.992738685690238, 22.287994629010132, 1.7300777357191246, 1.7256891795338822, 1.053489389134615]
+    elseif max_tsh == 750
+        push!(fixed_parameters, (30, 340.0))
+        initial_guess = [0.19107081562485467, 193.5507299030582, 0.06320369610333797, 3.615396541662386, 3.193329709817921, 5.859945166207494, 6.210074353735259, 8.366805296070277, 14.201304509730553, 24.96799231593123, 22.54811036867362, 1.7313281654269794, 1.7178301177489292, 1.06438708061412]
+    elseif max_tsh == 500
+        push!(fixed_parameters, (30, 230.0))
+        initial_guess = [0.18977780586388368, 131.1279825479093, 0.06359971398688721, 4.287300160732276, 3.6293532287259835, 5.669525939478856, 6.498189609201551, 8.616148459660245, 14.498969420047226, 24.98117821947933, 22.685604045053235, 1.7302774965439316, 1.7127347332128753, 1.0847978702217405]
+    elseif max_tsh == 300
+        push!(fixed_parameters, (30, 140.0))
+        initial_guess = [0.19247496579361736, 81.00084144797488, 0.06224548885002129, 4.475195057622472, 3.938017071000577, 5.494979474293497, 6.372542683797962, 8.894559324717209, 14.744073366639663, 24.991327848284516, 24.16253341905854, 1.7154460253326431, 1.6963652060335312, 1.0406224327778444]
+    else
+        error("max_tsh should be 1000, 750, 500, or 300, but was $max_tsh")
+    end
+    lowerbound = zeros(length(initial_guess))
+    upperbound = initial_guess .* 10.0
 
     # whether to scale plasma compartments by the Vp ratio
     scale_plasma_ode = true
@@ -655,7 +696,7 @@ function postfit_error(minimizer)
     init_dose  = convert(Vector{Float64}, train_data[!, Symbol("LT4.initial.dose")])
     postTSH = convert(Vector{Float64}, train_data[!, Symbol("6 week TSH")])
 
-    return objective(minimizer, fitting_index, lowerbound, upperbound, 
+    return objective(minimizer, fitting_index, fixed_parameters, lowerbound, upperbound, 
         blakesley_time, my400_data, my450_data, my600_data, jonklaas_time, patient_t4, 
         patient_t3, patient_tsh, jonklaas_patient_param, jonklaas_patient_dose,
         jonklaas_exclude_idx, jonklaas_secrete_rate_clusters, height, weight, sex,
@@ -666,19 +707,22 @@ function postfit_error(minimizer)
         scale_clearance_by_gender=scale_clearance_by_gender)
 end
 
+# read max tsh
+max_tsh = parse(Int, ARGS[1])
+
 println("Threads = ", Threads.nthreads())
 flush(stdout)
 println("prefit error: ")
-prefit = prefit_error()
+prefit = prefit_error(max_tsh)
 println("total prefit error = $prefit \n")
 flush(stdout)
 
-result = fit_all()
+result = fit_all(max_tsh)
 mylast = result.trace[end]
-writedlm("inv_hessian.txt", mylast.metadata["~inv(H)"])
+writedlm("inv_hessian_tsh$max_tsh.txt", mylast.metadata["~inv(H)"])
 
 println("postfit error:")
-post = postfit_error(result.minimizer)
+post = postfit_error(max_tsh, result.minimizer)
 println("total postfit error = $post \n")
 
 println("result:")

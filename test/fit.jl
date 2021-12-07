@@ -8,8 +8,9 @@ using LinearAlgebra
 BLAS.set_num_threads(1)
 
 function objective(
-    p_being_optimized::Vector, # first n elem is parameters, n+1:end is T4/T3 secrete rates
+    p_being_optimized::Vector,
     fitting_index::Vector, 
+    fixed_parameters::Vector,
     lowerbound::Vector,
     upperbound::Vector,
     blakesley_time::Matrix,
@@ -55,6 +56,7 @@ function objective(
     w = bmi * male_ref_height^2 # BMI * h^2
     ic, p = initialize([1.0; 0.88; 1.0; 0.88], true, male_ref_height, w, true, 
         fitting_index=fitting_index, p_being_optimized=p_being_optimized, 
+        fixed_parameters=fixed_parameters,
         scale_plasma_ode=scale_plasma_ode, scale_slow_ode=scale_slow_ode,
         scale_fast_ode=scale_fast_ode, scale_allometric_exponent=scale_allometric_exponent,
         scale_clearance_by_gender=scale_clearance_by_gender) 
@@ -94,6 +96,7 @@ function objective(
     w = bmi * female_ref_height^2 # BMI * h^2
     ic, p = initialize([1.0; 0.88; 1.0; 0.88], true, female_ref_height, w, false, 
         fitting_index=fitting_index, p_being_optimized=p_being_optimized,
+        fixed_parameters=fixed_parameters,
         scale_plasma_ode=scale_plasma_ode, scale_slow_ode=scale_slow_ode,
         scale_fast_ode=scale_fast_ode, scale_allometric_exponent=scale_allometric_exponent,
         scale_clearance_by_gender=scale_clearance_by_gender)  
@@ -164,9 +167,11 @@ function objective(
         # run model to steady state before actual simulation
         dial[1] = dial[3] = 1.0
         sol = simulate(height[i], weight_w1[i], sex[i], days=50, dial=dial, warmup=false, 
-            fitting_index=fitting_index, parameters=p_being_optimized[1:length(fitting_index)])
+            fitting_index=fitting_index, parameters=p_being_optimized[1:length(fitting_index)],
+            fixed_parameters=fixed_parameters)
         _, p = initialize(dial, true, height[i], weight_w1[i], sex[i], fitting_index=fitting_index,
-            p_being_optimized=p_being_optimized, scale_plasma_ode=scale_plasma_ode, scale_slow_ode=scale_slow_ode,
+            p_being_optimized=p_being_optimized, fixed_parameters=fixed_parameters,
+            scale_plasma_ode=scale_plasma_ode, scale_slow_ode=scale_slow_ode,
             scale_fast_ode=scale_fast_ode, scale_allometric_exponent=scale_allometric_exponent,
             scale_clearance_by_gender=scale_clearance_by_gender)
         T4_error += jonklaas_T4_neg_logl(sol, jonklaas_patient_t4[i, 2], p[47], p[64])
@@ -179,6 +184,7 @@ function objective(
             # reset parameters using new weight
             ic, p = initialize(dial, true, height[i], weight_w1[i] + week*weight_diff, sex[i],
                 fitting_index=fitting_index, p_being_optimized=p_being_optimized,
+                fixed_parameters=fixed_parameters,
                 scale_plasma_ode=scale_plasma_ode, scale_slow_ode=scale_slow_ode,
                 scale_fast_ode=scale_fast_ode, scale_allometric_exponent=scale_allometric_exponent,
                 scale_clearance_by_gender=scale_clearance_by_gender)
@@ -198,6 +204,7 @@ function objective(
             # reset parameters using new weight
             ic, p = initialize(dial, true, height[i], weight_w1[i] + week*weight_diff, sex[i],
                 fitting_index=fitting_index, p_being_optimized=p_being_optimized,
+                fixed_parameters=fixed_parameters,
                 scale_plasma_ode=scale_plasma_ode, scale_slow_ode=scale_slow_ode,
                 scale_fast_ode=scale_fast_ode, scale_allometric_exponent=scale_allometric_exponent,
                 scale_clearance_by_gender=scale_clearance_by_gender)
@@ -486,7 +493,7 @@ function update_logl_by_category!(logl_by_category::Vector, logl, sex, height, w
     end
 end
 
-function fit_all()
+function fit_all(max_tsh)
     fitting_index =
         [29; 31; 37;             # k05, A0, k3
         49; 50; 51; 52; 53; 54;  # hill function parameters
@@ -502,16 +509,27 @@ function fit_all()
     lowerbound[findall(x -> x == 65, fitting_index)] .= 20.0
     lowerbound[findall(x -> x == 66, fitting_index)] .= 20.0
     lowerbound[findall(x -> x == 78, fitting_index)] .= 1.7
-    lowerbound[findall(x -> x == 79, fitting_index)] .= 1.57
     upperbound[findall(x -> x == 65, fitting_index)] .= 25.0
     upperbound[findall(x -> x == 66, fitting_index)] .= 25.0
     upperbound[findall(x -> x == 54, fitting_index)] .= 20.0
     upperbound[findall(x -> x == 72, fitting_index)] .= 1.0
     upperbound[findall(x -> x == 73, fitting_index)] .= 1.0
     upperbound[findall(x -> x == 76, fitting_index)] .= 1.0
-    upperbound[findall(x -> x == 78, fitting_index)] .= 1.8
-    upperbound[findall(x -> x == 79, fitting_index)] .= 1.67
+    upperbound[findall(x -> x == 78, fitting_index)] .= 1.77
     upperbound[findall(x -> x == 80, fitting_index)] .= 10.0
+
+    fixed_parameters = [(1, 0.003), (13, 0.013)]
+    if max_tsh == 1000
+        push!(fixed_parameters, (30, 450.0))
+    elseif max_tsh == 750
+        push!(fixed_parameters, (30, 340.0))
+    elseif max_tsh == 500
+        push!(fixed_parameters, (30, 230.0))
+    elseif max_tsh == 300
+        push!(fixed_parameters, (30, 140.0))
+    else
+        error("max_tsh should be 1000, 750, 500, or 300, but was $max_tsh")
+    end
 
     # whether to scale plasma compartments by the Vp ratio
     scale_plasma_ode = true
@@ -543,7 +561,7 @@ function fit_all()
     init_dose  = convert(Vector{Float64}, train_data[!, Symbol("LT4.initial.dose")])
     postTSH = convert(Vector{Float64}, train_data[!, Symbol("6 week TSH")])
     
-    return optimize(p -> objective(p, fitting_index, lowerbound, upperbound, 
+    return Optim.optimize(p -> objective(p, fitting_index, fixed_parameters, lowerbound, upperbound, 
         blakesley_time, my400_data, my450_data, my600_data, jonklaas_time, patient_t4, 
         patient_t3, patient_tsh, jonklaas_patient_param, jonklaas_patient_dose,
         jonklaas_exclude_idx, jonklaas_secrete_rate_clusters, height, weight, sex, tspan, 
@@ -553,11 +571,14 @@ function fit_all()
         scale_allometric_exponent=scale_allometric_exponent, scale_clearance_by_gender=scale_clearance_by_gender 
         ),
             initial_guess, NelderMead(),
-            Optim.Options(time_limit = 72000.0, iterations = 10000, g_tol=1e-5,
+            Optim.Options(time_limit = 79200.0, iterations = 10000, g_tol=1e-5,
             show_trace = true, allow_f_increases=true))
+#             initial_guess, BFGS(),
+#             Optim.Options(time_limit = 600.0, iterations = 10000, g_tol=1e-5,
+#             show_trace = true, allow_f_increases=true, store_trace=true, extended_trace=true))
 end
 
-function prefit_error()
+function prefit_error(max_tsh)
     fitting_index =
         [29; 31; 37;             # k05, A0, k3
         49; 50; 51; 52; 53; 54;  # hill function parameters
@@ -571,6 +592,20 @@ function prefit_error()
     lowerbound = zeros(length(initial_guess))
     upperbound = initial_guess .* 10.0
 
+    # fixed_parameters: (a, b) means fix p[a] at b 
+    fixed_parameters = [(1, 0.003), (13, 0.013)]
+    if max_tsh == 1000
+        push!(fixed_parameters, (30, 450.0))
+    elseif max_tsh == 750
+        push!(fixed_parameters, (30, 340.0))
+    elseif max_tsh == 500
+        push!(fixed_parameters, (30, 230.0))
+    elseif max_tsh == 300
+        push!(fixed_parameters, (30, 140.0))
+    else
+        error("max_tsh should be 1000, 750, 500, or 300, but was $max_tsh")
+    end
+
     # whether to scale plasma compartments by the Vp ratio
     scale_plasma_ode = true
     scale_slow_ode = false
@@ -600,7 +635,7 @@ function prefit_error()
     init_dose  = convert(Vector{Float64}, train_data[!, Symbol("LT4.initial.dose")])
     postTSH = convert(Vector{Float64}, train_data[!, Symbol("6 week TSH")])
 
-    return objective(initial_guess, fitting_index, lowerbound, upperbound, 
+    return objective(initial_guess, fitting_index, fixed_parameters, lowerbound, upperbound, 
         blakesley_time, my400_data, my450_data, my600_data, jonklaas_time, patient_t4, 
         patient_t3, patient_tsh, jonklaas_patient_param, jonklaas_patient_dose,
         jonklaas_exclude_idx, jonklaas_secrete_rate_clusters, height, weight, sex, 
@@ -611,7 +646,7 @@ function prefit_error()
         scale_clearance_by_gender=scale_clearance_by_gender)
 end
 
-function postfit_error(minimizer)
+function postfit_error(max_tsh, minimizer)
     fitting_index =
         [29; 31; 37;             # k05, A0, k3
         49; 50; 51; 52; 53; 54;  # hill function parameters
@@ -625,6 +660,19 @@ function postfit_error(minimizer)
     lowerbound = zeros(length(minimizer))
     upperbound = Inf .* ones(length(minimizer))
 
+    fixed_parameters = [(1, 0.003), (13, 0.013)]
+    if max_tsh == 1000
+        push!(fixed_parameters, (30, 450.0))
+    elseif max_tsh == 750
+        push!(fixed_parameters, (30, 340.0))
+    elseif max_tsh == 500
+        push!(fixed_parameters, (30, 230.0))
+    elseif max_tsh == 300
+        push!(fixed_parameters, (30, 140.0))
+    else
+        error("max_tsh should be 1000, 750, 500, or 300, but was $max_tsh")
+    end
+
     # whether to scale plasma compartments by the Vp ratio
     scale_plasma_ode = true
     scale_slow_ode = false
@@ -654,7 +702,7 @@ function postfit_error(minimizer)
     init_dose  = convert(Vector{Float64}, train_data[!, Symbol("LT4.initial.dose")])
     postTSH = convert(Vector{Float64}, train_data[!, Symbol("6 week TSH")])
 
-    return objective(minimizer, fitting_index, lowerbound, upperbound, 
+    return objective(minimizer, fitting_index, fixed_parameters, lowerbound, upperbound, 
         blakesley_time, my400_data, my450_data, my600_data, jonklaas_time, patient_t4, 
         patient_t3, patient_tsh, jonklaas_patient_param, jonklaas_patient_dose,
         jonklaas_exclude_idx, jonklaas_secrete_rate_clusters, height, weight, sex,
@@ -665,17 +713,20 @@ function postfit_error(minimizer)
         scale_clearance_by_gender=scale_clearance_by_gender)
 end
 
+# read max tsh
+max_tsh = parse(Int, ARGS[1])
+
 println("Threads = ", Threads.nthreads())
 flush(stdout)
 println("prefit error: ")
-prefit = prefit_error()
+prefit = prefit_error(max_tsh)
 println("total prefit error = $prefit \n")
 flush(stdout)
 
-result = fit_all()
+result = fit_all(max_tsh)
 
 println("postfit error:")
-post = postfit_error(result.minimizer)
+post = postfit_error(max_tsh, result.minimizer)
 println("total postfit error = $post \n")
 
 println("result:")

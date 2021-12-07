@@ -363,7 +363,7 @@ function simulate(
     warmup::Bool = true,
     fitting_index = Int[],
     parameters = Float64[],
-    fixed_parameters=Tuple[],
+    fixed_parameters=Tuple{Int64,Float64}[],
     scale_plasma_ode=false,
     scale_slow_ode=false,
     scale_fast_ode=false,

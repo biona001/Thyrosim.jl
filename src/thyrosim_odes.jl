@@ -163,7 +163,7 @@ function initialize(
     p[27] = -0.000505      #d
     p[28] = 0.88           #k3absorb
     p[29] = 0.207          #k05
-    p[30] = 230                   #Bzero; fixed so max TSH is about 750
+    p[30] = 450                   #Bzero; fixed so max TSH is about 1000
     p[31] = 47.64                 #Azero; fitted to blakesley
     p[32] = 0                     #Amax;  should be around 0 because 1976 weeke says hypothyroid patients should have no oscillations.
     p[33] = -3.71          #phi
