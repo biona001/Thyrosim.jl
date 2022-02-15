@@ -214,7 +214,7 @@ function output_plot(sol; title::AbstractString = "Thyrosim simulation", automar
     T3 = 651.0 * sol[4, :] / p[47]
     TSH = 5.6 * sol[7, :] / p[48]
     if automargins
-        t4lim = max(1.2maximum(T4), 110.0)
+        t4lim = max(1.2maximum(T4), 130.0)
         t3lim = max(1.2maximum(T3), 2.5)
         tshlim = max(1.2maximum(TSH), 5.5)
     end
@@ -350,6 +350,10 @@ Simulate a person of known height, weight, and gender for 30 days (default).
 
 If `warmup = true`, will first run the model for 30 days, assuming healthy
 thyroid function, to get approximate initial condition. 
+
+Note: The last 5 parameters are optional scaling parameters, but in our final model,
+only `scale_plasma_ode` and `scale_clearance_by_gender` are set to `true`. Thus only 
+these 2 are true by default. 
 """
 function simulate(
     h::Real, # units meters
@@ -364,11 +368,11 @@ function simulate(
     fitting_index = Int[],
     parameters = Float64[],
     fixed_parameters=Tuple{Int64,Float64}[],
-    scale_plasma_ode=false,
+    scale_plasma_ode=true,
     scale_slow_ode=false,
     scale_fast_ode=false,
     scale_allometric_exponent = false,
-    scale_clearance_by_gender = false,
+    scale_clearance_by_gender = true,
     )
     function add_dose!(integrator)
         integrator.u[10] += integrator.p[55]

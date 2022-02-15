@@ -103,11 +103,11 @@ function initialize(
     fitting_index::Vector = Int[],         # needed in fitting
     p_being_optimized::Vector = Float64[], # needed in fitting
     fixed_parameters::Vector{Tuple{Int, Float64}}, # (a, b) means fix p[a] at b 
-    scale_plasma_ode::Bool = false,
+    scale_plasma_ode::Bool = true,
     scale_slow_ode::Bool = false,
     scale_fast_ode::Bool = false,
     scale_allometric_exponent::Bool = false,
-    scale_clearance_by_gender::Bool = false,
+    scale_clearance_by_gender::Bool = true,
     )
 
     # initial conditions
@@ -134,7 +134,7 @@ function initialize(
 
     # Parameter values
     p = zeros(Float64, 100)
-    p[1] = 0.00174155      #S4
+    p[1] = 0.0027785399344 #S4 (fitted)
     p[2] = 8               #tau
     p[3] = 0.868           #k12
     p[4] = 0.108           #k13
@@ -146,7 +146,7 @@ function initialize(
     p[10] = -8.83*10^-6    #D
     p[11] = 0.88           #k4absorb; originally 0.881
     p[12] = 0.0189         #k02
-    p[13] = 0.00998996     #VmaxD1fast 
+    p[13] = 0.012101809339 #VmaxD1fast (fitted)
     p[14] = 2.85           #KmD1fast
     p[15] = 6.63*10^-4     #VmaxD1slow
     p[16] = 95             #KmD1slow
@@ -162,15 +162,15 @@ function initialize(
     p[26] = 0.00061        #c
     p[27] = -0.000505      #d
     p[28] = 0.88           #k3absorb
-    p[29] = 0.207          #k05
-    p[30] = 450                   #Bzero; fixed so max TSH is about 1000
-    p[31] = 47.64                 #Azero; fitted to blakesley
-    p[32] = 0                     #Amax;  should be around 0 because 1976 weeke says hypothyroid patients should have no oscillations.
+    p[29] = 0.184972339613 #k05 (fitted)
+    p[30] = 450            #Bzero (fixed so max TSH is about 1000)
+    p[31] = 219.7085301388 #Azero (fitted)
+    p[32] = 0              #Amax (set to 0 because 1976 weeke says hypothyroid patients should have no oscillations)
     p[33] = -3.71          #phi
     p[34] = 0.53           #kdegTSH-HYPO
-    p[35] = 0.226                 #VmaxTSH; originally it's 0.037 but this is probably a typo because eq4 of 2010 eigenberg it not a real hill function
+    p[35] = 0.226          #VmaxTSH (originally it's 0.037 but this is probably a typo because eq4 of 2010 eigenberg it not a real hill function)
     p[36] = 23             #K50TSH
-    p[37] = 0.118          #k3
+    p[37] = 0.058786935033 #k3 (fitted)
     p[38] = 0.29           #T4P-EU
     p[39] = 0.006          #T3P-EU
     p[40] = 0.037          #KdegT3B
@@ -184,12 +184,12 @@ function initialize(
     p[48] = 5.2            #VTSH
 
     #parameters for hill functions in f_circ and SRtsh
-    p[49] = 4.57           #K_circ -> fitted to Blakesley data (this will be recalculated in the ODE equations
-    p[50] = 3.90           #K_SR_tsh -> fitted to Blakesley data (this will be recalculated in the ODE equations
-    p[51] = 11.0 #6.91     #n, hill exponent in f_circ
-    p[52] = 5.0  #7.66     #m, hill exponent in SR_tsh
-    p[53] = 3.5            #K_f4 for f4
-    p[54] = 8.0            #l, hill exponent for f4
+    p[49] = 3.001011022378 #K_circ (fitted)
+    p[50] = 3.094711690204 #K_SR_tsh (fitted)
+    p[51] = 5.674773816316 #n, hill exponent in f_circ (fitted)
+    p[52] = 6.290803221796 #m, hill exponent in SR_tsh (fitted)
+    p[53] = 8.498343729591 #K_f4 for f4 (fitted)
+    p[54] = 14.36664496926 #l, hill exponent for f4 (fitted)
 
     # p[55] = 0.0 # T4 oral dose
     # p[56] = 0.0 # T3 oral dose
@@ -201,14 +201,14 @@ function initialize(
     p[60] = dial[4] # controls T3 excretion rate
 
     # variance parameters for T4/T3/TSH and schneider error (these are used only for parameter estimation!)
-    p[61] = 5.003761571969437   # σ for T4 in Blakesley
-    p[62] = 0.11122955089297369 # σ for T3 Blakesley and Jonklaas
-    p[63] = 0.4                 # σ for TSH in Blakesley and Jonklaas
-    p[64] = 0.1                 # σ for FT4 in Jonklaas
+    p[61] = 5.003761571969437   # σ for T4 in Blakesley (fixed to reasonable value before fitting)
+    p[62] = 0.11122955089297369 # σ for T3 Blakesley and Jonklaas (fixed to reasonable value before fitting)
+    p[63] = 0.4                 # σ for TSH in Blakesley and Jonklaas (fixed to reasonable value before fitting)
+    p[64] = 0.1                 # σ for FT4 in Jonklaas (fixed to reasonable value before fitting)
 
     # Blakesley reference BMI
-    p[65] = 22.5 # w / h^2 (male)
-    p[66] = 22.5 # w / h^2 (female)
+    p[65] = 21.82854404275587 # (male, fitted)
+    p[66] = 22.99050845201536 # w / h^2 (female, fitted)
 
     # Vtsh scaling factor
     p[67] = 1.0 
@@ -230,15 +230,15 @@ function initialize(
     p[75] = 1.0
 
     # allometric exponent for k05 
-    p[76] = 0.75 # for male (need to fit)
-    p[77] = 0.75 # for female (0.75 works well)
+    p[76] = 0.75 # for male (fixed)
+    p[77] = 0.75 # for female (fixed, 0.75 works well)
 
     # ref height for male and female
-    p[78] = 1.77
-    p[79] = 1.63
+    p[78] = 1.7608716659237555 # (fitted)
+    p[79] = 1.6696106891941103 # (fitted)
 
     # clearance scale (male / female)
-    p[80] = 1.0 # male clearance is 100% of female by default
+    p[80] = 1.0499391485135692 # male clearance (fitted)
 
     # infusion parameters
     p[81] = 0.0 # T4 infusion
