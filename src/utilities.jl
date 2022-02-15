@@ -381,7 +381,7 @@ function simulate(
     cbk = PeriodicCallback(add_dose!, dosing_interval) 
 
     # initialize thyrosim parameters
-    ic, p = initialize([1.0; 0.88; 1.0; 0.88], true, h, w, sex, 
+    ic, p = initialize(dial, true, h, w, sex, 
         fitting_index=fitting_index, p_being_optimized=parameters,
         fixed_parameters=fixed_parameters,
         scale_plasma_ode=scale_plasma_ode, scale_slow_ode=scale_slow_ode,
