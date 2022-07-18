@@ -78,7 +78,8 @@ plt = output_plot(sol, title="Absurdly large T4 dose in 5 day intervals")  # mak
 
 ## Citation and Reproducibility
 
-Coming soon
+If you use `Thyrosim.jl` for academic purposes, please cite the following paper
++ [Optimized Replacement T4 and T4+T3 Dosing in Male and Female Hypothyroid Patients With Different BMIs Using a Personalized Mechanistic Model of Thyroid Hormone Regulation Dynamics](https://www.frontiersin.org/articles/10.3389/fendo.2022.888429/full?&utm_source=Email_to_authors_&utm_medium=Email&utm_content=T1_11.5e1_author&utm_campaign=Email_publication&field=&journalName=Frontiers_in_Endocrinology&id=888429)
 
 ## Bug reports 
 
