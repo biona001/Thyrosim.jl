@@ -277,6 +277,8 @@ function initialize(
         p[48] = Vtsh
     end
 
+    # note to self: when making original plots featured in our paper, p[29] is
+    # SET to a value after this scaling happens. I think it shouldn't be set.
     clearance_allometric_exp = sex ? p[76] : p[77]
     if scale_clearance_by_gender
         ref_weight = sex ? p[65] * p[78]^2 : p[66] * p[79]^2
@@ -471,6 +473,9 @@ function thyrosim(dq, q, p, t)
     q5 = q[5] * 1 / p[75]
     q6 = q[6] * 1 / p[74]
     q7 = q[7] * 1 / p[69]
+
+    # adhoc fix for https://github.com/biona001/Thyrosim.jl/issues/1
+    q[findall(x -> x < 0, q)] .= 0
 
     # Auxillary equations
     q4F = (p[24]+ p[25] * q1 + p[26] * q1^2 + p[27] * q1^3) * q4 #FT3p
